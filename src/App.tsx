@@ -20,6 +20,7 @@ import { SettingsPage } from '@/features/settings/SettingsPage'
 import { CoursesPage } from '@/features/courses/CoursesPage'
 import { ProgressPage } from '@/features/progress/ProgressPage'
 import { CanvasPage } from '@/features/canvas/CanvasPage'
+import { PDFsPage } from '@/features/pdf/PDFsPage'
 
 export default function App() {
   const { isInitialized, isInitializing, initError, setInitialized } = useAppStore()
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/flashcards" element={<FlashcardsPage />} />
         <Route path="/flashcards/:deckId" element={<FlashcardsPage />} />
         <Route path="/planner" element={<PlannerPage />} />
+        <Route path="/pdf" element={<PDFsPage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:courseId" element={<CoursesPage />} />
         <Route path="/progress" element={<ProgressPage />} />
