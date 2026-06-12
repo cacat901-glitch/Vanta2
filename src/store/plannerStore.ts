@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { Task, CalendarEvent, Assignment, Exam, PomodoroState } from '@/types'
 import { getDB } from '@/db'
+import { useSettingsStore } from './settingsStore'
 
 interface PlannerState {
   tasks: Task[]
@@ -153,13 +154,14 @@ export const usePlannerStore = create<PlannerState>()(
     startPomodoro: (courseId, taskId) => {
       const { pomodoroInterval } = get()
       if (pomodoroInterval) clearInterval(pomodoroInterval)
+      const ps = useSettingsStore.getState().settings.pomodoro
 
       set((s) => {
         s.pomodoro = {
           phase: 'work',
-          timeRemaining: 25 * 60, // Will be overridden by settings
+          timeRemaining: ps.workDuration * 60,
           currentRound: 0,
-          totalRounds: 4,
+          totalRounds: ps.roundsBeforeLongBreak,
           isRunning: true,
           linkedCourseId: courseId ?? null,
           linkedTaskId: taskId ?? null,
@@ -211,18 +213,19 @@ export const usePlannerStore = create<PlannerState>()(
       const { phase, currentRound, totalRounds, linkedCourseId, linkedTaskId } = pomodoro
 
       if (phase === 'work') {
+        const ps = useSettingsStore.getState().settings.pomodoro
         // Log completed pomodoro
         void (async () => {
           const db = await getDB()
           await db.tasks.logPomodoro({
             courseId: linkedCourseId, taskId: linkedTaskId,
-            durationMinutes: 25, completed: true,
-            startedAt: new Date(Date.now() - 25 * 60 * 1000),
+            durationMinutes: ps.workDuration, completed: true,
+            startedAt: new Date(Date.now() - ps.workDuration * 60 * 1000),
             endedAt: new Date(),
           })
           await db.activity.log('pomodoro_completed', {
             courseId: linkedCourseId ?? undefined,
-            durationSeconds: 25 * 60,
+            durationSeconds: ps.workDuration * 60,
           })
         })()
 
@@ -231,13 +234,16 @@ export const usePlannerStore = create<PlannerState>()(
         set((s) => {
           s.pomodoro.currentRound = nextRound
           s.pomodoro.phase = isLongBreak ? 'long-break' : 'short-break'
-          s.pomodoro.timeRemaining = isLongBreak ? 15 * 60 : 5 * 60
+          s.pomodoro.timeRemaining = (isLongBreak ? ps.longBreakDuration : ps.shortBreakDuration) * 60
+          s.pomodoro.isRunning = ps.autoStartNextSession
         })
       } else {
         // Break complete — back to work
+        const ps = useSettingsStore.getState().settings.pomodoro
         set((s) => {
           s.pomodoro.phase = 'work'
-          s.pomodoro.timeRemaining = 25 * 60
+          s.pomodoro.timeRemaining = ps.workDuration * 60
+          s.pomodoro.isRunning = ps.autoStartNextSession
         })
       }
     },
