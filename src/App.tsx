@@ -23,6 +23,8 @@ import { CanvasPage } from '@/features/canvas/CanvasPage'
 import { PDFsPage } from '@/features/pdf/PDFsPage'
 import { MediaPage } from '@/features/media/MediaPage'
 import { LecturesPage } from '@/features/lecture/LecturesPage'
+import { TutorPage } from '@/features/ai-tutor/TutorPage'
+import { OralExamPage } from '@/features/oral-exam/OralExamPage'
 
 export default function App() {
   const { isInitialized, isInitializing, initError, setInitialized } = useAppStore()
@@ -82,6 +84,8 @@ export default function App() {
         <Route path="/pdf" element={<PDFsPage />} />
         <Route path="/media" element={<MediaPage />} />
         <Route path="/lectures" element={<LecturesPage />} />
+        <Route path="/tutor" element={<TutorPage />} />
+        <Route path="/oral-exam" element={<OralExamPage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:courseId" element={<CoursesPage />} />
         <Route path="/progress" element={<ProgressPage />} />
