@@ -187,6 +187,7 @@ export const useNotebookStore = create<NotebookState>()(
     createPage: async (sectionId, title) => {
       const db = await getDB()
       const page = await db.pages.createPage(sectionId, title)
+      void db.activity.log('note_created', { objectId: page.id, objectType: 'page' })
       set((s) => {
         if (!s.pages[sectionId]) s.pages[sectionId] = []
         s.pages[sectionId]!.push(page)

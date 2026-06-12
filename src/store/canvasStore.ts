@@ -29,6 +29,7 @@ export const useCanvasStore = create<CanvasState>()(
     create: async (title) => {
       const db = await getDB()
       const doc = await db.canvas.create(title ?? 'Untitled Canvas')
+      void db.activity.log('canvas_created', { objectId: doc.id, objectType: 'canvas' })
       set((s) => { s.documents.unshift(doc) })
       return doc
     },

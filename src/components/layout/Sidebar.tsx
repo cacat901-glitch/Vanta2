@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Pen, Brain, Calendar, Settings,
   ChevronRight, ChevronDown, Star,
   FlameIcon, Trophy, BarChart3, BookCopy, GraduationCap,
-  Plus, Flame, FileText, Film, Mic, Network, Sparkles, FlaskConical, Speech, type LucideIcon,
+  Plus, Flame, FileText, Film, Mic, Network, Sparkles, FlaskConical, Speech, Clock, AudioLines, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotebookStore } from '@/store/notebookStore'
@@ -32,6 +32,8 @@ const NAV_ITEMS = [
   { icon: Network, label: 'Knowledge Graph', path: '/graph' },
   { icon: Sparkles, label: 'Second Brain', path: '/second-brain' },
   { icon: FlaskConical, label: 'Research', path: '/research' },
+  { icon: Clock, label: 'Timeline', path: '/timeline' },
+  { icon: AudioLines, label: 'Voice', path: '/voice' },
   { icon: BarChart3, label: 'Progress', path: '/progress' },
 ]
 

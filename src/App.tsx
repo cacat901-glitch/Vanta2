@@ -28,6 +28,8 @@ import { OralExamPage } from '@/features/oral-exam/OralExamPage'
 import { GraphPage } from '@/features/knowledge-graph/GraphPage'
 import { SecondBrainPage } from '@/features/second-brain/SecondBrainPage'
 import { ResearchPage } from '@/features/research/ResearchPage'
+import { TimelinePage } from '@/features/learning-timeline/TimelinePage'
+import { VoiceAssistantPage } from '@/features/voice/VoiceAssistantPage'
 
 export default function App() {
   const { isInitialized, isInitializing, initError, setInitialized } = useAppStore()
@@ -58,6 +60,9 @@ export default function App() {
         ])
 
         syncProvider()
+        // Schedule daily notifications based on settings
+        const { initNotifications } = await import('@/services/notifications')
+        void initNotifications(useSettingsStore.getState().settings.notifications)
         setInitialized(true)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to initialize StudyOS'
@@ -92,6 +97,8 @@ export default function App() {
         <Route path="/graph" element={<GraphPage />} />
         <Route path="/second-brain" element={<SecondBrainPage />} />
         <Route path="/research" element={<ResearchPage />} />
+        <Route path="/timeline" element={<TimelinePage />} />
+        <Route path="/voice" element={<VoiceAssistantPage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:courseId" element={<CoursesPage />} />
         <Route path="/progress" element={<ProgressPage />} />
