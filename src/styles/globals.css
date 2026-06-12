@@ -344,10 +344,10 @@
   @apply my-3 rounded-lg border-l-4 px-4 py-3;
 }
 .callout > * { @apply my-1; }
-.callout-info { @apply bg-info/8 border-info; }
-.callout-tip { @apply bg-success/8 border-success; }
-.callout-warning { @apply bg-warning/8 border-warning; }
-.callout-danger { @apply bg-danger/8 border-danger; }
+.callout-info { background-color: rgba(77,166,255,0.08); @apply border-info; }
+.callout-tip { background-color: rgba(62,207,178,0.08); @apply border-success; }
+.callout-warning { background-color: rgba(255,187,56,0.08); @apply border-warning; }
+.callout-danger { background-color: rgba(255,82,99,0.08); @apply border-danger; }
 .callout::before {
   content: '';
   @apply block;
