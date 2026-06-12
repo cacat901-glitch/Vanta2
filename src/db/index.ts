@@ -16,6 +16,7 @@ import { DocumentRepository } from './repositories/DocumentRepository'
 import { ConversationRepository } from './repositories/ConversationRepository'
 import { LectureRepository } from './repositories/LectureRepository'
 import { KnowledgeRepository } from './repositories/KnowledgeRepository'
+import { PageAttachmentsRepository } from './repositories/PageAttachmentsRepository'
 
 export interface DB {
   storage: StorageAdapter
@@ -31,6 +32,7 @@ export interface DB {
   conversations: ConversationRepository
   lectures: LectureRepository
   knowledge: KnowledgeRepository
+  pageAttachments: PageAttachmentsRepository
 }
 
 let _db: DB | null = null
@@ -56,6 +58,7 @@ export async function initDB(): Promise<DB> {
       conversations: new ConversationRepository(storage),
       lectures: new LectureRepository(storage),
       knowledge: new KnowledgeRepository(storage),
+      pageAttachments: new PageAttachmentsRepository(storage),
     }
     return _db
   })()
@@ -72,4 +75,5 @@ export {
   PageRepository, FlashcardRepository, SettingsRepository, CourseRepository,
   ActivityRepository, TaskRepository, CanvasRepository, MediaRepository,
   DocumentRepository, ConversationRepository, LectureRepository, KnowledgeRepository,
+  PageAttachmentsRepository,
 }

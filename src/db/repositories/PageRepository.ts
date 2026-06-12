@@ -152,6 +152,10 @@ export class PageRepository extends BaseRepository {
     await this.storage.execute('DELETE FROM sections WHERE id = ?', [id])
   }
 
+  async updateSection(id: string, name: string): Promise<void> {
+    await this.storage.execute('UPDATE sections SET name = ? WHERE id = ?', [name, id])
+  }
+
   // ─── Pages ───────────────────────────────────────────────────────────
 
   async getPagesBySection(sectionId: string): Promise<Page[]> {

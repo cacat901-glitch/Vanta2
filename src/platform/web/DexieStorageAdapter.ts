@@ -3,17 +3,16 @@ import type { StorageAdapter, Transaction } from '../adapters/StorageAdapter'
 
 /**
  * Dexie/IndexedDB implementation of StorageAdapter for browser/PWA mode.
- * Implements a SQL-like interface on top of IndexedDB.
  *
- * NOTE: This uses a simple key-value store approach for the browser build.
- * The full SQL-compatible implementation is provided by the Tauri SQLite plugin.
- * For browser builds, complex relational queries are handled in the repository layer.
+ * Design: every row is stored as { id: "table:rowId", table, data: "{...json}" }.
+ * All SQL-style queries are executed against the parsed JSON data in memory.
+ * This handles arbitrary WHERE clauses with column = ? patterns.
  */
 
 interface SqlRow {
-  id: string
+  id: string        // composite key: "table:rowId"
   table: string
-  data: string // JSON serialized row
+  data: string      // JSON of the actual row columns
   createdAt: number
   updatedAt: number
 }
@@ -24,13 +23,82 @@ class StudyOSDatabase extends Dexie {
   constructor() {
     super('StudyOSDB')
     this.version(1).stores({
+      // Only the composite id and table are indexed. Everything else is in data.
       sqlRows: 'id, table, createdAt, updatedAt',
     })
   }
 }
 
-// Simple in-memory SQL-like execution using Dexie
-// For complex SQL, the repository layer handles logic in JS
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+/** Extract table name from any SQL statement. */
+function extractTable(sql: string): string {
+  const m = sql.match(/(?:INTO|UPDATE|FROM|TABLE)\s+([\w_]+)/i)
+  return m?.[1]?.toLowerCase() ?? ''
+}
+
+/**
+ * Parse every "col = ?" pair in a WHERE clause, return {col → paramIndex} map.
+ * Handles:
+ *   WHERE id = ?
+ *   WHERE workspace_id = ? AND name = ?
+ *   WHERE page_id = ?  (from sub-queries we skip)
+ *   WHERE is_favorite = 1  (literal integer)
+ */
+interface WhereClause {
+  colParamPairs: Array<{ col: string; paramIndex: number | null; literal: unknown }>
+}
+
+function parseWhere(sql: string, params: unknown[]): WhereClause {
+  const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|\s+LIMIT|\s+GROUP|$)/is)
+  if (!whereMatch) return { colParamPairs: [] }
+
+  const clause = whereMatch[1]!
+  // Split on AND (ignore OR for now — we don't use it)
+  const parts = clause.split(/\bAND\b/i)
+  let paramPos = 0
+
+  const colParamPairs: WhereClause['colParamPairs'] = []
+
+  for (const part of parts) {
+    const eq = part.match(/(\w+)\s*=\s*(\?|[-\d]+)/i)
+    if (!eq) continue
+    const col = eq[1]!.toLowerCase()
+    const val = eq[2]!
+    if (val === '?') {
+      colParamPairs.push({ col, paramIndex: paramPos++, literal: null })
+    } else {
+      // Literal value (e.g. is_favorite = 1)
+      colParamPairs.push({ col, paramIndex: null, literal: Number(val) })
+    }
+  }
+
+  return { colParamPairs }
+}
+
+/** Check whether a parsed data row matches all WHERE conditions. */
+function rowMatches(data: Record<string, unknown>, where: WhereClause, params: unknown[]): boolean {
+  for (const { col, paramIndex, literal } of where.colParamPairs) {
+    const expected = paramIndex !== null ? params[paramIndex] : literal
+    const actual = data[col]
+    // Coerce: DB stores 0/1 for booleans; compare as strings if types differ
+    if (String(actual) !== String(expected)) return false
+  }
+  return true
+}
+
+/** Parse SET clause, return [{col, paramIndex}] advancing from startParamIndex. */
+function parseSet(sql: string): Array<{ col: string }> {
+  const setMatch = sql.match(/SET\s+(.+?)\s+WHERE/is)
+  if (!setMatch) return []
+  return setMatch[1]!
+    .split(',')
+    .map(p => p.trim())
+    .map(p => ({ col: p.split('=')[0]!.trim().toLowerCase() }))
+}
+
+// ─── Adapter ──────────────────────────────────────────────────────────────────
+
 export class DexieStorageAdapter implements StorageAdapter {
   private db: StudyOSDatabase
 
@@ -38,32 +106,48 @@ export class DexieStorageAdapter implements StorageAdapter {
     this.db = new StudyOSDatabase()
   }
 
+  async initialize(): Promise<void> {
+    await this.db.open()
+  }
+
+  async close(): Promise<void> {
+    this.db.close()
+  }
+
   async execute(sql: string, params: unknown[] = []): Promise<void> {
-    // Parse simple INSERT, UPDATE, DELETE, CREATE TABLE statements
-    const normalized = sql.trim().toUpperCase()
-    
-    if (normalized.startsWith('CREATE TABLE') || normalized.startsWith('CREATE INDEX')) {
-      // Schema creation - no-op in Dexie mode (schema is defined in Dexie version stores)
-      return
-    }
+    const upper = sql.trim().toUpperCase()
 
-    if (normalized.startsWith('INSERT')) {
-      await this._handleInsert(sql, params)
-      return
-    }
+    // DDL: silently ignore — no physical schema needed in Dexie
+    if (
+      upper.startsWith('CREATE') ||
+      upper.startsWith('DROP') ||
+      upper.startsWith('BEGIN') ||
+      upper.startsWith('COMMIT') ||
+      upper.startsWith('ROLLBACK') ||
+      upper.startsWith('PRAGMA') ||
+      upper.startsWith('CREATE VIRTUAL')
+    ) return
 
-    if (normalized.startsWith('UPDATE')) {
+    if (upper.startsWith('INSERT OR IGNORE') || upper.startsWith('INSERT OR REPLACE')) {
+      await this._handleInsert(sql, params, true)
+    } else if (upper.startsWith('INSERT')) {
+      await this._handleInsert(sql, params, false)
+    } else if (upper.startsWith('UPDATE')) {
       await this._handleUpdate(sql, params)
-      return
-    }
-
-    if (normalized.startsWith('DELETE')) {
+    } else if (upper.startsWith('DELETE')) {
       await this._handleDelete(sql, params)
-      return
     }
+    // Everything else (e.g. FTS inserts) silently succeeds
   }
 
   async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
+    const upper = sql.trim().toUpperCase()
+
+    // COUNT(*) shorthand
+    if (upper.includes('COUNT(*)')) {
+      return this._handleCount<T>(sql, params)
+    }
+
     return this._handleSelect<T>(sql, params)
   }
 
@@ -73,53 +157,41 @@ export class DexieStorageAdapter implements StorageAdapter {
   }
 
   async transaction(fn: (tx: Transaction) => Promise<void>): Promise<void> {
-    // Dexie transactions
     await this.db.transaction('rw', this.db.sqlRows, async () => {
       const tx: Transaction = {
-        execute: (sql, params) => this.execute(sql, params),
-        query: <T>(sql: string, params?: unknown[]) => this.query<T>(sql, params),
-        queryOne: <T>(sql: string, params?: unknown[]) => this.queryOne<T>(sql, params),
+        execute: (s, p) => this.execute(s, p),
+        query: <T>(s: string, p?: unknown[]) => this.query<T>(s, p),
+        queryOne: <T>(s: string, p?: unknown[]) => this.queryOne<T>(s, p),
       }
       await fn(tx)
     })
   }
 
-  async initialize(): Promise<void> {
-    // Dexie auto-initializes on first open
-    await this.db.open()
-  }
+  // ─── INSERT ─────────────────────────────────────────────────────────
 
-  async close(): Promise<void> {
-    this.db.close()
-  }
-
-  // ─── Private SQL parsing helpers ──────────────────────────────────
-
-  private _extractTableName(sql: string): string {
-    // Match "INSERT INTO table_name" or "UPDATE table_name" or "DELETE FROM table_name"
-    const match = sql.match(/(?:INTO|UPDATE|FROM)\s+(\w+)/i)
-    return match?.[1] ?? ''
-  }
-
-  private async _handleInsert(sql: string, params: unknown[]): Promise<void> {
-    const table = this._extractTableName(sql)
+  private async _handleInsert(sql: string, params: unknown[], upsert: boolean): Promise<void> {
+    const table = extractTable(sql)
     if (!table) return
 
-    // Extract column names and values from SQL
+    // Extract column list from "(col1, col2, ...) VALUES"
     const colMatch = sql.match(/\(([^)]+)\)\s+VALUES/i)
     if (!colMatch) return
 
-    const columns = colMatch[1]!.split(',').map(c => c.trim())
+    const columns = colMatch[1]!.split(',').map(c => c.trim().toLowerCase())
     const row: Record<string, unknown> = {}
-    
-    columns.forEach((col, i) => {
-      row[col] = params[i] ?? null
-    })
+    columns.forEach((col, i) => { row[col] = params[i] ?? null })
 
-    const id = (row['id'] as string) ?? `${table}-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    
+    const rowId = (row['id'] as string) ?? `${table}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const compositeKey = `${table}:${rowId}`
+
+    if (!upsert) {
+      // Standard INSERT: only write if not already present
+      const existing = await this.db.sqlRows.get(compositeKey)
+      if (existing) return
+    }
+
     await this.db.sqlRows.put({
-      id: `${table}:${id}`,
+      id: compositeKey,
       table,
       data: JSON.stringify(row),
       createdAt: Date.now(),
@@ -127,85 +199,112 @@ export class DexieStorageAdapter implements StorageAdapter {
     })
   }
 
+  // ─── UPDATE ─────────────────────────────────────────────────────────
+
   private async _handleUpdate(sql: string, params: unknown[]): Promise<void> {
-    const table = this._extractTableName(sql)
+    const table = extractTable(sql)
     if (!table) return
 
-    // Simple UPDATE table SET col=? WHERE id=?
-    const whereMatch = sql.match(/WHERE\s+id\s*=\s*\?/i)
-    if (!whereMatch) return
+    const setCols = parseSet(sql)
+    const where = parseWhere(sql, params)
 
-    const id = params[params.length - 1] as string
-    const existing = await this.db.sqlRows.get(`${table}:${id}`)
-    if (!existing) return
+    // params: [set_val0, set_val1, ..., where_val0, where_val1, ...]
+    const numSetParams = setCols.length
+    const whereParams = params.slice(numSetParams)
+    const whereCopy = parseWhere(sql, whereParams)
 
-    const currentData = JSON.parse(existing.data) as Record<string, unknown>
-    
-    // Extract SET clause  
-    const setMatch = sql.match(/SET\s+(.+?)\s+WHERE/is)
-    if (!setMatch) return
+    const rows = await this.db.sqlRows.where('table').equals(table).toArray()
 
-    const setParts = setMatch[1]!.split(',').map(p => p.trim())
-    let paramIdx = 0
-    
-    for (const part of setParts) {
-      const [col] = part.split('=').map(s => s.trim())
-      if (col) currentData[col] = params[paramIdx++]
+    for (const sqlRow of rows) {
+      const data = JSON.parse(sqlRow.data) as Record<string, unknown>
+      if (!rowMatches(data, whereCopy, whereParams)) continue
+
+      setCols.forEach((s, i) => { data[s.col] = params[i] })
+      await this.db.sqlRows.put({ ...sqlRow, data: JSON.stringify(data), updatedAt: Date.now() })
     }
-
-    await this.db.sqlRows.put({
-      ...existing,
-      data: JSON.stringify(currentData),
-      updatedAt: Date.now(),
-    })
+    void where
   }
+
+  // ─── DELETE ─────────────────────────────────────────────────────────
 
   private async _handleDelete(sql: string, params: unknown[]): Promise<void> {
-    const table = this._extractTableName(sql)
+    const table = extractTable(sql)
     if (!table) return
 
-    const whereMatch = sql.match(/WHERE\s+id\s*=\s*\?/i)
-    if (whereMatch && params.length > 0) {
-      await this.db.sqlRows.delete(`${table}:${params[0]}`)
-    } else {
-      // Delete all from table
+    const where = parseWhere(sql, params)
+
+    if (where.colParamPairs.length === 0) {
+      // DELETE FROM table (no WHERE) — delete all
       await this.db.sqlRows.where('table').equals(table).delete()
+      return
+    }
+
+    const rows = await this.db.sqlRows.where('table').equals(table).toArray()
+    for (const sqlRow of rows) {
+      const data = JSON.parse(sqlRow.data) as Record<string, unknown>
+      if (rowMatches(data, where, params)) {
+        await this.db.sqlRows.delete(sqlRow.id)
+      }
     }
   }
 
+  // ─── SELECT ─────────────────────────────────────────────────────────
+
   private async _handleSelect<T>(sql: string, params: unknown[]): Promise<T[]> {
-    const table = this._extractTableName(sql)
+    const table = extractTable(sql)
     if (!table) return []
+
+    // Skip FTS / virtual table queries — return empty
+    if (sql.toLowerCase().includes('pages_fts') || sql.toLowerCase().includes('match ?')) {
+      return []
+    }
 
     let rows = await this.db.sqlRows.where('table').equals(table).toArray()
 
-    // Apply simple WHERE id = ? filter
-    const whereIdMatch = sql.match(/WHERE\s+(\w+)\.?id\s*=\s*\?/i)
-    if (whereIdMatch && params.length > 0) {
-      const id = params[0] as string
-      rows = rows.filter(r => r.id === `${table}:${id}`)
-    }
-
-    // Apply ORDER BY
-    const orderMatch = sql.match(/ORDER BY\s+(\w+)\s*(ASC|DESC)?/i)
-    if (orderMatch) {
-      const col = orderMatch[1]!
-      const dir = orderMatch[2]?.toUpperCase() ?? 'ASC'
-      rows.sort((a, b) => {
-        const aData = JSON.parse(a.data) as Record<string, unknown>
-        const bData = JSON.parse(b.data) as Record<string, unknown>
-        const aVal = String(aData[col] ?? '')
-        const bVal = String(bData[col] ?? '')
-        return dir === 'ASC' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+    // WHERE filtering
+    const where = parseWhere(sql, params)
+    if (where.colParamPairs.length > 0) {
+      rows = rows.filter(r => {
+        const data = JSON.parse(r.data) as Record<string, unknown>
+        return rowMatches(data, where, params)
       })
     }
 
-    // Apply LIMIT
-    const limitMatch = sql.match(/LIMIT\s+(\d+)/i)
-    if (limitMatch) {
-      rows = rows.slice(0, parseInt(limitMatch[1]!))
+    // ORDER BY
+    const orderMatch = sql.match(/ORDER BY\s+([\w_.]+)\s*(ASC|DESC)?/i)
+    if (orderMatch) {
+      const col = orderMatch[1]!.toLowerCase().replace(/^\w+\./, '') // strip "table."
+      const dir = (orderMatch[2] ?? 'ASC').toUpperCase()
+      rows.sort((a, b) => {
+        const aData = JSON.parse(a.data) as Record<string, unknown>
+        const bData = JSON.parse(b.data) as Record<string, unknown>
+        const av = String(aData[col] ?? '')
+        const bv = String(bData[col] ?? '')
+        return dir === 'ASC' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
     }
 
+    // LIMIT
+    const limitMatch = sql.match(/\bLIMIT\s+(\d+)/i)
+    if (limitMatch) rows = rows.slice(0, parseInt(limitMatch[1]!))
+
     return rows.map(r => JSON.parse(r.data) as T)
+  }
+
+  // ─── COUNT(*) ───────────────────────────────────────────────────────
+
+  private async _handleCount<T>(sql: string, params: unknown[]): Promise<T[]> {
+    const table = extractTable(sql)
+    if (!table) return [{ count: 0 } as unknown as T]
+
+    let rows = await this.db.sqlRows.where('table').equals(table).toArray()
+    const where = parseWhere(sql, params)
+    if (where.colParamPairs.length > 0) {
+      rows = rows.filter(r => {
+        const data = JSON.parse(r.data) as Record<string, unknown>
+        return rowMatches(data, where, params)
+      })
+    }
+    return [{ count: rows.length } as unknown as T]
   }
 }

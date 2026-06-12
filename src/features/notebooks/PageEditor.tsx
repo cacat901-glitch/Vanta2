@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { JSONContent } from '@tiptap/core'
 import {
-  Star, MoreHorizontal, History, Trash2, Copy, Download, Lock, Unlock, Smile,
+  Star, MoreHorizontal, History, Trash2, Copy, Download, Lock, Unlock,
+  PanelRight,
 } from 'lucide-react'
 import { RichEditor } from '@/components/editor/RichEditor'
 import { useNotebookStore } from '@/store/notebookStore'
 import { useAppStore } from '@/store/appStore'
 import { useAIStore } from '@/store/aiStore'
 import { useSettingsStore } from '@/store/settingsStore'
+import { PageAttachmentsPanel } from './PageAttachmentsPanel'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Dialog, DialogContent, DialogHeader, DialogTitle, Button,
@@ -19,9 +21,7 @@ const EMOJI_OPTIONS = ['📄', '📝', '📚', '🧠', '🔬', '🧮', '⚗️',
 
 interface PageEditorProps {
   page: Page
-}
-
-export function PageEditor({ page }: PageEditorProps) {
+}export function PageEditor({ page }: PageEditorProps) {
   const updatePage = useNotebookStore((s) => s.updatePage)
   const savePageContent = useNotebookStore((s) => s.savePageContent)
   const deletePage = useNotebookStore((s) => s.deletePage)
@@ -39,6 +39,7 @@ export function PageEditor({ page }: PageEditorProps) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [showEmoji, setShowEmoji] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showPanel, setShowPanel] = useState(true)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const versionTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -110,99 +111,121 @@ export function PageEditor({ page }: PageEditorProps) {
   }, [page, toast])
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Page header */}
-      <div className="px-8 pt-8 pb-2 max-w-3xl mx-auto w-full">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="relative">
+    <div className="flex h-full overflow-hidden">
+      {/* ── Main editor column ── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Page header */}
+        <div className="px-8 pt-8 pb-2 max-w-3xl mx-auto w-full">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative">
+              <button
+                onClick={() => setShowEmoji(!showEmoji)}
+                className="text-4xl hover:bg-surface rounded-lg p-1 transition-colors"
+              >
+                {page.icon ?? '📄'}
+              </button>
+              {showEmoji && (
+                <div className="absolute top-full left-0 mt-1 z-20 grid grid-cols-5 gap-1 p-2 rounded-lg border border-border-default bg-surface-elevated shadow-xl">
+                  {EMOJI_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => { void updatePage(page.id, { icon: emoji }); setShowEmoji(false) }}
+                      className="text-xl hover:bg-surface rounded p-1 transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1" />
+
+            {/* Toggle attachments panel */}
             <button
-              onClick={() => setShowEmoji(!showEmoji)}
-              className="text-4xl hover:bg-surface rounded-lg p-1 transition-colors"
+              onClick={() => setShowPanel(v => !v)}
+              title="Toggle attachments & links"
+              className={cn(
+                'w-8 h-8 flex items-center justify-center rounded-md transition-colors',
+                showPanel ? 'text-accent-primary bg-accent-primary/10' : 'text-text-muted hover:text-text-primary hover:bg-surface',
+              )}
             >
-              {page.icon ?? '📄'}
+              <PanelRight size={15} />
             </button>
-            {showEmoji && (
-              <div className="absolute top-full left-0 mt-1 z-20 grid grid-cols-5 gap-1 p-2 rounded-lg border border-border-default bg-surface-elevated shadow-xl">
-                {EMOJI_OPTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => { void updatePage(page.id, { icon: emoji }); setShowEmoji(false) }}
-                    className="text-xl hover:bg-surface rounded p-1 transition-colors"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
+
+            <button
+              onClick={() => toggleFavorite(page.id)}
+              className={cn('w-8 h-8 flex items-center justify-center rounded-md transition-colors',
+                page.isFavorite ? 'text-warning' : 'text-text-muted hover:text-warning hover:bg-surface')}
+              title={page.isFavorite ? 'Unfavorite' : 'Add to favorites'}
+            >
+              <Star size={16} fill={page.isFavorite ? 'currentColor' : 'none'} />
+            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface transition-colors">
+                  <MoreHorizontal size={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={async () => { await loadVersions(page.id); setShowHistory(true) }}>
+                  <History size={14} /> Version history
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void updatePage(page.id, { isLocked: !page.isLocked })}>
+                  {page.isLocked ? <><Unlock size={14} /> Unlock page</> : <><Lock size={14} /> Lock page</>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void duplicatePage(page.id)}>
+                  <Copy size={14} /> Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportMarkdown}>
+                  <Download size={14} /> Export as Markdown
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem destructive onClick={() => { if (confirm('Delete this page?')) void deletePage(page.id) }}>
+                  <Trash2 size={14} /> Delete page
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          <div className="flex-1" />
-
-          <button
-            onClick={() => toggleFavorite(page.id)}
-            className={cn('w-8 h-8 flex items-center justify-center rounded-md transition-colors',
-              page.isFavorite ? 'text-warning' : 'text-text-muted hover:text-warning hover:bg-surface')}
-            title={page.isFavorite ? 'Unfavorite' : 'Add to favorites'}
-          >
-            <Star size={16} fill={page.isFavorite ? 'currentColor' : 'none'} />
-          </button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface transition-colors">
-                <MoreHorizontal size={16} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={async () => { await loadVersions(page.id); setShowHistory(true) }}>
-                <History size={14} /> Version history
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void updatePage(page.id, { isLocked: !page.isLocked })}>
-                {page.isLocked ? <><Unlock size={14} /> Unlock page</> : <><Lock size={14} /> Lock page</>}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void duplicatePage(page.id)}>
-                <Copy size={14} /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportMarkdown}>
-                <Download size={14} /> Export as Markdown
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem destructive onClick={() => { if (confirm('Delete this page?')) void deletePage(page.id) }}>
-                <Trash2 size={14} /> Delete page
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            placeholder="Untitled"
+            disabled={page.isLocked}
+            className="w-full bg-transparent text-3xl font-bold text-text-primary placeholder:text-text-muted outline-none"
+          />
+          {page.tags.length > 0 && (
+            <div className="flex gap-1.5 mt-2">
+              {page.tags.map((tag) => (
+                <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-surface text-text-secondary">#{tag}</span>
+              ))}
+            </div>
+          )}
         </div>
 
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
-          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          placeholder="Untitled"
-          disabled={page.isLocked}
-          className="w-full bg-transparent text-3xl font-bold text-text-primary placeholder:text-text-muted outline-none"
-        />
-        {page.tags.length > 0 && (
-          <div className="flex gap-1.5 mt-2">
-            {page.tags.map((tag) => (
-              <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-surface text-text-secondary">#{tag}</span>
-            ))}
-          </div>
-        )}
+        {/* Editor */}
+        <div className="flex-1 overflow-hidden px-8">
+          <RichEditor
+            key={page.id}
+            content={page.content as JSONContent | null}
+            onChange={handleChange}
+            onAIAction={handleAIAction}
+            editable={!page.isLocked}
+            autosaveStatus={saveStatus}
+          />
+        </div>
       </div>
 
-      {/* Editor */}
-      <div className="flex-1 overflow-hidden px-8">
-        <RichEditor
-          key={page.id}
-          content={page.content as JSONContent | null}
-          onChange={handleChange}
-          onAIAction={handleAIAction}
-          editable={!page.isLocked}
-          autosaveStatus={saveStatus}
-        />
-      </div>
+      {/* ── Right panel: attachments & course link ── */}
+      {showPanel && (
+        <div className="w-56 flex-shrink-0 border-l border-border-subtle bg-sidebar-bg flex flex-col overflow-y-auto">
+          <PageAttachmentsPanel pageId={page.id} />
+        </div>
+      )}
 
       {/* Version history dialog */}
       <Dialog open={showHistory} onOpenChange={setShowHistory}>

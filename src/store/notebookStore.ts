@@ -19,6 +19,7 @@ interface NotebookState {
 
   // Workspace
   createWorkspace: (name: string) => Promise<Workspace>
+  setCurrentWorkspaceId: (id: string) => void
 
   // Notebooks
   createNotebook: (name: string, icon?: string, color?: string) => Promise<Notebook>
@@ -29,6 +30,7 @@ interface NotebookState {
   // Sections
   loadSections: (notebookId: string) => Promise<Section[]>
   createSection: (notebookId: string, name: string) => Promise<Section>
+  updateSection: (id: string, name: string) => Promise<void>
   deleteSection: (id: string) => Promise<void>
   toggleSection: (id: string) => void
 
@@ -77,14 +79,21 @@ export const useNotebookStore = create<NotebookState>()(
       set((s) => { s.isLoading = true })
       const db = await getDB()
 
-      // Ensure default workspace exists
-      const workspace = await db.pages.ensureDefaultWorkspace()
-      const notebooks = await db.pages.getNotebooksByWorkspace(workspace.id)
+      // Ensure at least one workspace (subject) exists
+      await db.pages.ensureDefaultWorkspace()
+      // Load ALL workspaces
+      const workspaces = await db.pages.getAllWorkspaces()
+      // Load ALL notebooks across all workspaces
+      const allNotebooks: import('@/types').Notebook[] = []
+      for (const ws of workspaces) {
+        const nbs = await db.pages.getNotebooksByWorkspace(ws.id)
+        allNotebooks.push(...nbs)
+      }
 
       set((s) => {
-        s.workspaces = [workspace]
-        s.notebooks = notebooks
-        s.currentWorkspaceId = workspace.id
+        s.workspaces = workspaces
+        s.notebooks = allNotebooks
+        s.currentWorkspaceId = workspaces[0]?.id ?? null
         s.isLoading = false
       })
 
@@ -98,10 +107,13 @@ export const useNotebookStore = create<NotebookState>()(
       return ws
     },
 
+    setCurrentWorkspaceId: (id) => set((s) => { s.currentWorkspaceId = id }),
+
     createNotebook: async (name, icon, color) => {
       const db = await getDB()
+      // Use currentWorkspaceId (set by the UI when switching subjects)
       const wsId = get().currentWorkspaceId
-      if (!wsId) throw new Error('No workspace selected')
+      if (!wsId) throw new Error('No subject selected')
       const nb = await db.pages.createNotebook(wsId, name, icon, color)
       set((s) => {
         s.notebooks.push(nb)
@@ -165,6 +177,17 @@ export const useNotebookStore = create<NotebookState>()(
         }
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- intentional cleanup
         delete s.pages[id]
+      })
+    },
+
+    updateSection: async (id, name) => {
+      const db = await getDB()
+      await db.pages.updateSection(id, name)
+      set((s) => {
+        for (const nbId of Object.keys(s.sections)) {
+          const sec = s.sections[nbId]!.find((sec) => sec.id === id)
+          if (sec) { sec.name = name; break }
+        }
       })
     },
 

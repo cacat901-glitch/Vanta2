@@ -28,6 +28,11 @@ const MIGRATIONS: Migration[] = [
     description: 'Add gamification tables',
     up: migration_004,
   },
+  {
+    version: 5,
+    description: 'Add page_attachments — link PDFs and courses to notebook pages',
+    up: migration_005,
+  },
 ]
 
 /** Run all pending migrations on startup. */
@@ -654,4 +659,32 @@ async function migration_004(storage: StorageAdapter): Promise<void> {
     INSERT OR IGNORE INTO user_stats (id, updated_at)
     VALUES ('singleton', ?)
   `, [new Date().toISOString()])
+}
+
+
+// ─── Migration 005: Page attachments ──────────────────────────────────
+
+async function migration_005(storage: StorageAdapter): Promise<void> {
+  // Links PDFs (documents) and courses to notebook pages
+  await storage.execute(`
+    CREATE TABLE IF NOT EXISTS page_attachments (
+      id TEXT PRIMARY KEY,
+      page_id TEXT NOT NULL,
+      document_id TEXT,
+      course_id TEXT,
+      attached_at TEXT NOT NULL,
+      FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
+    )
+  `)
+  await storage.execute('CREATE INDEX IF NOT EXISTS idx_page_attachments_page ON page_attachments(page_id)')
+  await storage.execute('CREATE INDEX IF NOT EXISTS idx_page_attachments_doc ON page_attachments(document_id)')
+
+  // Also add course_id column to pages so a page can be directly linked to a course
+  // SQLite only supports ADD COLUMN in ALTER TABLE
+  try {
+    await storage.execute('ALTER TABLE pages ADD COLUMN course_id TEXT')
+  } catch {
+    // Column may already exist on fresh installs — silently ignore
+  }
+  console.log('[DB] Migration 005 complete: page_attachments table created')
 }
