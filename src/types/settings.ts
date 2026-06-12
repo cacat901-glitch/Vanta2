@@ -1,4 +1,5 @@
 import type { AIProviderConfig, AIProviderType, NotificationTone } from './ai'
+export type { NotificationTone } from './ai'
 
 // ─── App Settings ─────────────────────────────────────────────────────
 
