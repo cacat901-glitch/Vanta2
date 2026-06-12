@@ -1,4 +1,6 @@
 import type { ChatChunk } from '@/types/ai'
+// Re-export so callers can import ChatChunk from this module
+export type { ChatChunk }
 
 /** Parse a Server-Sent Events stream into ChatChunk objects */
 export function parseSSEStream(
