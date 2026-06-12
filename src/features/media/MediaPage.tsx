@@ -120,7 +120,6 @@ export function MediaPage() {
 
 void (null as unknown as MediaType)
 
-
 function MediaGallery({ items, tab, onOpen, onRemove }: {
   items: MediaItem[]; tab: Tab; onOpen: (i: MediaItem) => void; onRemove: (id: string) => void
 }) {
