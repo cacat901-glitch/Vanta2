@@ -33,7 +33,15 @@ export function AIPanel({ className }: AIPanelProps) {
   const sendMessage = useAIStore((s) => s.sendMessage)
   const cancelStream = useAIStore((s) => s.cancelStream)
   const clearConversation = useAIStore((s) => s.clearConversation)
+  const loadLatestConversation = useAIStore((s) => s.loadLatestConversation)
+  const useKnowledge = useAIStore((s) => s.useKnowledge)
+  const setUseKnowledge = useAIStore((s) => s.setUseKnowledge)
   const toggleAIPanel = useAppStore((s) => s.toggleAIPanel)
+
+  // Restore the most recent conversation so chat has memory across reloads.
+  useEffect(() => {
+    if (isConfigured) void loadLatestConversation()
+  }, [isConfigured, loadLatestConversation])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -160,6 +168,21 @@ export function AIPanel({ className }: AIPanelProps) {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="flex items-center justify-between px-1">
+            <button
+              onClick={() => setUseKnowledge(!useKnowledge)}
+              className={cn('flex items-center gap-1.5 text-xs transition-colors',
+                useKnowledge ? 'text-accent-primary' : 'text-text-muted hover:text-text-secondary')}
+              title="When on, the AI answers using your notes, PDFs, and lectures"
+            >
+              <span className={cn('w-3 h-3 rounded-full border flex items-center justify-center',
+                useKnowledge ? 'bg-accent-primary border-accent-primary' : 'border-border-default')}>
+                {useKnowledge && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </span>
+              Using my knowledge base
+            </button>
           </div>
 
           <div className="flex items-end gap-1.5">

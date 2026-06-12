@@ -3,6 +3,8 @@ import { immer } from 'zustand/middleware/immer'
 import type { ChatMessage } from '@/types/ai'
 import { aiService, isNoProviderError, isCancelledError, streamToString } from '@/services/ai'
 import type { ChatChunk } from '@/types/ai'
+import { retrieveContext } from '@/services/studyContext'
+import { getDB } from '@/db'
 
 export type AIRequestStatus = 'idle' | 'streaming' | 'complete' | 'error' | 'cancelled'
 
@@ -31,10 +33,19 @@ interface AIState {
   providerName: string
   modelName: string
 
+  // ─── Memory / knowledge ───────────────────────────────────────────────
+  conversationId: string | null
+  useKnowledge: boolean
+  lastSources: string[]
+
   // ─── Actions ──────────────────────────────────────────────────────────
   sendMessage: (content: string, contextText?: string) => Promise<void>
   cancelStream: () => void
   clearConversation: () => void
+  newConversation: () => void
+  loadLatestConversation: () => Promise<void>
+  setUseKnowledge: (v: boolean) => void
+  _persist: () => Promise<void>
 
   runInline: (prompt: string, signal?: AbortSignal) => Promise<string>
   cancelInline: () => void
@@ -65,6 +76,9 @@ export const useAIStore = create<AIState>()(
     isConfigured: false,
     providerName: '',
     modelName: '',
+    conversationId: null,
+    useKnowledge: true,
+    lastSources: [],
 
     syncProvider: () => {
       set((s) => {
@@ -85,25 +99,14 @@ export const useAIStore = create<AIState>()(
     },
 
     sendMessage: async (content, contextText) => {
-      const { messages, status } = get()
+      const { messages, status, useKnowledge } = get()
       if (status === 'streaming') return
 
-      // Build user message
       const userMsg: AIMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'user',
-        content,
-        isStreaming: false,
-        timestamp: new Date(),
+        id: `msg-${Date.now()}`, role: 'user', content, isStreaming: false, timestamp: new Date(),
       }
-
-      // Build assistant placeholder
       const assistantMsg: AIMessage = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: '',
-        isStreaming: true,
-        timestamp: new Date(),
+        id: `msg-${Date.now() + 1}`, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(),
       }
 
       set((s) => {
@@ -117,26 +120,40 @@ export const useAIStore = create<AIState>()(
       set((s) => { s.currentStreamController = controller })
 
       try {
-        // Build conversation history for the API
+        // ── Retrieve relevant knowledge from the user's own materials ──
+        let knowledge = ''
+        let sources: string[] = []
+        if (useKnowledge && !contextText) {
+          try {
+            const r = await retrieveContext(content, 6)
+            knowledge = r.context
+            sources = r.sourceIds
+          } catch { /* retrieval is best-effort */ }
+        }
+        set((s) => { s.lastSources = sources })
+
+        // ── Build the grounded system prompt ──
+        let systemPrompt: string
+        if (contextText) {
+          systemPrompt = `You are StudyOS AI, the user's study assistant. Use these notes as context:\n\n${contextText}\n\nIf the answer isn't in the notes, say so, then you may use general knowledge.`
+        } else if (knowledge.trim()) {
+          systemPrompt = `You are StudyOS AI, the user's personal study assistant. You have access to the user's own study materials (notes, PDFs, lectures, videos). Answer using this retrieved context whenever relevant, and cite which source number you used.\n\nRETRIEVED FROM THE USER'S KNOWLEDGE BASE:\n${knowledge}\n\nIf the context doesn't cover the question, say so briefly, then answer from general knowledge.`
+        } else {
+          systemPrompt = `You are StudyOS AI, a precise, helpful study assistant. The user has no indexed material matching this question yet, so answer from general knowledge and, where useful, suggest what they could import or write to build their knowledge base.`
+        }
+
+        // Conversation history for multi-turn memory
         const history: ChatMessage[] = messages
-          .filter((m) => !m.isStreaming)
+          .filter((m) => !m.isStreaming && !m.error)
           .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
-        history.push({ role: 'user', content: content })
+        history.push({ role: 'user', content })
 
-        // Add context if provided
-        const systemPrompt = contextText
-          ? `You are a helpful study assistant. Use the following notes as context when answering:
+        const fullMessages: ChatMessage[] = [
+          { role: 'system', content: systemPrompt },
+          ...history,
+        ]
 
-${contextText}
-
-If asked about something not in the notes, you can draw on your general knowledge but say so.`
-          : `You are StudyOS AI — a smart, precise, helpful study assistant. 
-Help the user understand concepts, answer questions, and assist with their studies.`
-
-        const stream = await aiService.chatWithSystem(systemPrompt, content, {
-          signal: controller.signal,
-        })
-
+        const stream = await aiService.chat(fullMessages, { signal: controller.signal })
         const reader = stream.getReader()
         let accumulated = ''
 
@@ -145,27 +162,25 @@ Help the user understand concepts, answer questions, and assist with their studi
           if (done) break
           const chunk = value as ChatChunk
           accumulated += chunk.text
-
           set((s) => {
             const msg = s.messages.find((m) => m.id === assistantMsg.id)
-            if (msg) {
-              msg.content = accumulated
-              msg.isStreaming = !chunk.done
-            }
+            if (msg) { msg.content = accumulated; msg.isStreaming = !chunk.done }
             s.currentStreamText = accumulated
           })
         }
 
         set((s) => {
           const msg = s.messages.find((m) => m.id === assistantMsg.id)
-          if (msg) { msg.isStreaming = false }
+          if (msg) msg.isStreaming = false
           s.status = 'complete'
           s.currentStreamController = null
         })
+
+        // ── Persist conversation (memory across reloads) ──
+        await get()._persist()
       } catch (err) {
         const isCancelled = isCancelledError(err)
         const isNoProvider = isNoProviderError(err)
-
         set((s) => {
           const msg = s.messages.find((m) => m.id === assistantMsg.id)
           if (msg) {
@@ -182,6 +197,52 @@ Help the user understand concepts, answer questions, and assist with their studi
         })
       }
     },
+
+    // Persist current messages to the ai_conversations table.
+    _persist: async () => {
+      const { messages, conversationId, providerName, modelName } = get()
+      const real = messages.filter((m) => !m.isStreaming && !m.error)
+      if (real.length === 0) return
+      const db = await getDB()
+      const chatMsgs: ChatMessage[] = real.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      let id = conversationId
+      if (!id) {
+        const title = real[0]?.content.slice(0, 60) ?? 'Conversation'
+        const conv = await db.conversations.create(title, (providerName || 'none') as never, modelName || '')
+        id = conv.id
+        set((s) => { s.conversationId = id })
+      }
+      await db.conversations.saveMessages(id, chatMsgs)
+    },
+
+    newConversation: () => set((s) => {
+      s.messages = []
+      s.status = 'idle'
+      s.currentStreamText = ''
+      s.conversationId = null
+      s.lastSources = []
+    }),
+
+    loadLatestConversation: async () => {
+      if (get().messages.length > 0 || get().conversationId) return
+      const db = await getDB()
+      const all = await db.conversations.getAll()
+      const latest = all[0]
+      if (!latest) return
+      set((s) => {
+        s.conversationId = latest.id
+        s.messages = latest.messages.map((m, i) => ({
+          id: `hist-${i}`,
+          role: (typeof m.content === 'string' ? m.role : 'assistant') as 'user' | 'assistant',
+          content: typeof m.content === 'string' ? m.content : '',
+          isStreaming: false,
+          timestamp: new Date(latest.updatedAt),
+        }))
+        s.status = 'idle'
+      })
+    },
+
+    setUseKnowledge: (v) => set((s) => { s.useKnowledge = v }),
 
     cancelStream: () => {
       const { currentStreamController } = get()
@@ -202,6 +263,8 @@ Help the user understand concepts, answer questions, and assist with their studi
         s.messages = []
         s.status = 'idle'
         s.currentStreamText = ''
+        s.conversationId = null
+        s.lastSources = []
       }),
 
     runInline: async (prompt, signal) => {
