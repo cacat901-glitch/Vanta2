@@ -106,8 +106,10 @@ export async function getStorageAdapter(): Promise<StorageAdapter> {
     const { TauriStorageAdapter } = await import('./tauri/TauriStorageAdapter')
     _storage = new TauriStorageAdapter()
   } else {
-    const { DexieStorageAdapter } = await import('./web/DexieStorageAdapter')
-    _storage = new DexieStorageAdapter()
+    // Browser/PWA: real SQLite via WebAssembly (sql.js).
+    // The same SQL runs identically here and in Tauri's native SQLite.
+    const { SqlJsStorageAdapter } = await import('./web/SqlJsStorageAdapter')
+    _storage = new SqlJsStorageAdapter()
   }
 
   await _storage.initialize()

@@ -28,6 +28,9 @@ export default defineConfig(async () => ({
   // The same config is used for both dev and prod builds
   envPrefix: ['VITE_', 'TAURI_'],
 
+  // Ensure the sql.js .wasm asset is treated as an asset and copied to the build.
+  assetsInclude: ['**/*.wasm'],
+
   build: {
     // Tauri supports es2021
     target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
