@@ -12,9 +12,6 @@ import { usePlannerStore } from '@/store/plannerStore'
 import { useDocumentStore } from '@/store/documentStore'
 import { useMediaStore } from '@/store/mediaStore'
 import { useLectureStore } from '@/store/lectureStore'
-import { useDocumentStore } from '@/store/documentStore'
-import { useMediaStore } from '@/store/mediaStore'
-import { useLectureStore } from '@/store/lectureStore'
 import { getDB } from '@/db'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui'
 import { cn, relativeDate } from '@/lib/utils'
@@ -367,7 +364,7 @@ function CourseDetailPage({ course, onBack }: { course: Course; onBack: () => vo
             <ContentSection
               icon={BookOpen}
               title="Notebooks"
-              count={notebooks.length}
+              count={agg.pageCount}
               action={{ label: 'Open', onClick: () => navigate('/notebooks') }}
               color={course.color}
             >
