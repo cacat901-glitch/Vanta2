@@ -4,6 +4,7 @@ import { useLectureStore } from '@/store/lectureStore'
 import { useFlashcardStore } from '@/store/flashcardStore'
 import { useAppStore } from '@/store/appStore'
 import { aiService, streamToString } from '@/services/ai'
+import { ingest, knowledgeId } from '@/services/knowledgeEngine'
 import { Button, Textarea } from '@/components/ui'
 import type { Lecture, TranscriptLine } from '@/types/knowledge'
 
@@ -31,6 +32,15 @@ export function LectureDetail({ lectureId, onBack }: { lectureId: string; onBack
   const saveTranscript = async () => {
     const lines: TranscriptLine[] = transcript.split('\n').filter(Boolean).map((text, i) => ({ text, startTime: i * 5, endTime: (i + 1) * 5 }))
     await update(lectureId, { transcript: lines })
+    // Index the transcript into the knowledge base so the tutor, quiz/flashcard
+    // generators, oral exam, and chat can all use this lecture.
+    ingest({
+      id: knowledgeId.lecture(lectureId),
+      type: 'lecture',
+      title: lecture?.title ?? 'Lecture',
+      content: transcript,
+      courseId: lecture?.courseId ?? null,
+    })
     toast({ type: 'success', title: 'Transcript saved' })
   }
 

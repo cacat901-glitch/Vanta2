@@ -49,6 +49,8 @@ export const useLectureStore = create<LectureState>()(
     remove: async (id) => {
       const db = await getDB()
       await db.lectures.delete(id)
+      const { removeFromKnowledge, knowledgeId } = await import('@/services/knowledgeEngine')
+      void removeFromKnowledge(knowledgeId.lecture(id))
       set((s) => { s.lectures = s.lectures.filter((l) => l.id !== id) })
     },
   })),

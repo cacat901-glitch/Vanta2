@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer'
 import type { MediaItem, MediaType, MediaTranscriptLine } from '@/types/media'
 import { getDB } from '@/db'
 import { getFileSystemAdapter } from '@/platform'
+import { ingest, removeFromKnowledge, knowledgeId } from '@/services/knowledgeEngine'
 
 interface MediaState {
   items: MediaItem[]
@@ -77,7 +78,7 @@ export const useMediaStore = create<MediaState>()(
         channelName: null, courseId: null, transcript: null, filePath: null,
         tags: [], metadata: { content },
       })
-      await db.knowledge.upsert({ type: 'web_clip', title, content })
+      ingest({ id: knowledgeId.media(item.id), type: 'web_clip', title, content })
       set((s) => { s.items.unshift(item) })
       return item
     },
@@ -85,15 +86,27 @@ export const useMediaStore = create<MediaState>()(
     setTranscript: async (id, transcript) => {
       const db = await getDB()
       await db.media.updateTranscript(id, transcript)
+      // Index the transcript so the video becomes part of the knowledge base.
+      const item = await db.media.getById(id)
+      if (item) {
+        ingest({
+          id: knowledgeId.media(id),
+          type: 'video',
+          title: item.title ?? 'Video',
+          content: transcript.map((t) => t.text).join('\n'),
+          courseId: item.courseId,
+        })
+      }
       set((s) => {
-        const item = s.items.find((i) => i.id === id)
-        if (item) item.transcript = transcript
+        const it = s.items.find((i) => i.id === id)
+        if (it) it.transcript = transcript
       })
     },
 
     remove: async (id) => {
       const db = await getDB()
       await db.media.delete(id)
+      void removeFromKnowledge(knowledgeId.media(id))
       set((s) => { s.items = s.items.filter((i) => i.id !== id) })
     },
   })),

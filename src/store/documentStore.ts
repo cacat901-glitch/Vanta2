@@ -4,6 +4,7 @@ import type { StudyDocument, Annotation } from '@/types/media'
 import { getDB } from '@/db'
 import { getFileSystemAdapter } from '@/platform'
 import { loadPdf, extractPdfText } from '@/lib/pdf'
+import { ingest, removeFromKnowledge, knowledgeId } from '@/services/knowledgeEngine'
 
 interface DocumentState {
   documents: StudyDocument[]
@@ -48,8 +49,16 @@ export const useDocumentStore = create<DocumentState>()(
         title: file.name.replace(/\.pdf$/i, ''), filePath: path, fileType: 'pdf',
         contentText, pageCount,
       })
-      // Register as knowledge object for RAG/graph
-      await db.knowledge.upsert({ type: 'pdf', title: created.title, content: contentText })
+      // Funnel into the unified Knowledge Engine: chunk + embed + index + graph.
+      // This is what makes the PDF visible to Second Brain, quiz/flashcard
+      // generators, the tutor, and chat.
+      ingest({
+        id: knowledgeId.pdf(created.id),
+        type: 'pdf',
+        title: created.title,
+        content: contentText,
+        courseId: created.courseId,
+      })
       await db.activity.log('pdf_opened', { objectId: created.id, objectType: 'pdf' })
 
       set((s) => { s.documents.unshift(created) })
@@ -59,6 +68,7 @@ export const useDocumentStore = create<DocumentState>()(
     remove: async (id) => {
       const db = await getDB()
       await db.documents.delete(id)
+      void removeFromKnowledge(knowledgeId.pdf(id))
       set((s) => { s.documents = s.documents.filter((d) => d.id !== id) })
     },
 

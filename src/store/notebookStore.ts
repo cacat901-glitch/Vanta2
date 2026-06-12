@@ -247,6 +247,8 @@ export const useNotebookStore = create<NotebookState>()(
     deletePage: async (id) => {
       const db = await getDB()
       await db.pages.deletePage(id)
+      const { removeFromKnowledge, knowledgeId } = await import('@/services/knowledgeEngine')
+      void removeFromKnowledge(knowledgeId.page(id))
       set((s) => {
         for (const sectionId of Object.keys(s.pages)) {
           s.pages[sectionId] = s.pages[sectionId]!.filter((p) => p.id !== id)
@@ -272,12 +274,13 @@ export const useNotebookStore = create<NotebookState>()(
       if (text.trim().length > 20) {
         await db.knowledge.upsert({ id: `page:${id}`, type: 'page', title, content: text, tags })
       }
-      // Snapshot a version + RAG-index on the less-frequent version save
+      // Snapshot a version + index into the Knowledge Engine on the less-frequent
+      // version save (every ~30s of editing), so chat/quiz/tutor can use the page.
       if (saveVersion) {
         await db.pages.saveVersion(id, content)
         if (text.trim().length > 50) {
-          const { indexObject } = await import('@/services/rag')
-          void indexObject(`page:${id}`, text)
+          const { ingest, knowledgeId } = await import('@/services/knowledgeEngine')
+          ingest({ id: knowledgeId.page(id), type: 'page', title, content: text, tags })
         }
       }
       // Update in-memory state
