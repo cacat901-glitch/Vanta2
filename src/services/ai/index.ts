@@ -5,3 +5,5 @@ export { OllamaProvider } from './providers/OllamaProvider'
 export { GeminiProvider } from './providers/GeminiProvider'
 export { GroqProvider } from './providers/GroqProvider'
 export { OpenAICompatibleProvider } from './providers/OpenAICompatibleProvider'
+// Re-export ChatChunk so stores/components can import it from this barrel file
+export type { ChatChunk } from './stream'

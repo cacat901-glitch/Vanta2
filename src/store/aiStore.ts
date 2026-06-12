@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { ChatMessage } from '@/types/ai'
 import { aiService, isNoProviderError, isCancelledError, streamToString } from '@/services/ai'
-import type { ChatChunk } from '@/services/ai'
+import type { ChatChunk } from '@/services/ai/stream'
 
 export type AIRequestStatus = 'idle' | 'streaming' | 'complete' | 'error' | 'cancelled'
 

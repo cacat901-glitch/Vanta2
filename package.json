@@ -105,7 +105,13 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/cli": "^2.1.0",
+    "@tauri-apps/plugin-dialog": "^2.2.0",
+    "@tauri-apps/plugin-fs": "^2.2.0",
+    "@tauri-apps/plugin-notification": "^2.2.0",
+    "@tauri-apps/plugin-shell": "^2.2.0",
+    "@tauri-apps/plugin-sql": "^2.2.0",
     "@types/d3": "^7.4.3",
     "@types/fabric": "^5.3.9",
     "@types/katex": "^0.16.7",

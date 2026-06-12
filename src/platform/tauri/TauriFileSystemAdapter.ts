@@ -2,11 +2,12 @@ import type { FileSystemAdapter, FileEntry, DialogOptions, UnwatchFn } from '../
 
 /**
  * Tauri implementation of FileSystemAdapter.
- * Uses tauri-plugin-fs, tauri-plugin-dialog, and custom Tauri commands.
+ * All Tauri API imports are dynamic so this module is never executed in the
+ * browser / Vite build — the platform/index.ts factory only instantiates this
+ * class when window.__TAURI_INTERNALS__ is present.
  */
 export class TauriFileSystemAdapter implements FileSystemAdapter {
   async readFile(path: string): Promise<Uint8Array> {
-    // Dynamically import Tauri APIs — never imported at module level
     const { readFile } = await import('@tauri-apps/plugin-fs')
     return readFile(path)
   }
@@ -34,7 +35,7 @@ export class TauriFileSystemAdapter implements FileSystemAdapter {
   async listDirectory(path: string): Promise<FileEntry[]> {
     const { readDir } = await import('@tauri-apps/plugin-fs')
     const entries = await readDir(path)
-    return entries.map(e => ({
+    return entries.map((e: { name: string; isDirectory?: boolean }) => ({
       name: e.name,
       path: `${path}/${e.name}`,
       isDirectory: e.isDirectory ?? false,
@@ -57,10 +58,9 @@ export class TauriFileSystemAdapter implements FileSystemAdapter {
       multiple: options?.multiple ?? false,
       directory: options?.directory ?? false,
     })
-
     if (!result) return []
-    if (Array.isArray(result)) return result
-    return [result]
+    if (Array.isArray(result)) return result as string[]
+    return [result as string]
   }
 
   async openSaveDialog(options?: DialogOptions): Promise<string | null> {
@@ -70,19 +70,19 @@ export class TauriFileSystemAdapter implements FileSystemAdapter {
       defaultPath: options?.defaultPath,
       filters: options?.filters,
     })
-    return result ?? null
+    return (result as string | null) ?? null
   }
 
   async watchFile(_path: string, _callback: () => void): Promise<UnwatchFn> {
-    // Tauri fs watching via tauri-plugin-fs watch
-    // Simplified: return no-op until watch API is stable
-    console.warn('File watching not yet implemented in Tauri adapter')
+    console.warn('[TauriFS] File watching not yet implemented')
     return () => { /* no-op */ }
   }
 
   async getAppDataDir(): Promise<string> {
     const { invoke } = await import('@tauri-apps/api/core')
-    return invoke<string>('get_app_data_dir')
+    // invoke<T> with type argument — cast result to string
+    const dir = await invoke('get_app_data_dir') as string
+    return dir
   }
 
   async revealInExplorer(path: string): Promise<void> {
@@ -96,7 +96,6 @@ export class TauriFileSystemAdapter implements FileSystemAdapter {
   }
 
   joinPath(...segments: string[]): string {
-    // Tauri uses OS-native path separators, but for simplicity use /
     return segments.join('/').replace(/\/+/g, '/')
   }
 }

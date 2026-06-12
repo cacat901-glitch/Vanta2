@@ -1,7 +1,7 @@
 import type { ChatMessage, ChatOptions, ChatChunk } from '@/types/ai'
 import type { AIProvider } from '../types'
 import { AIServiceError, makeAIError } from '../types'
-import { parseNDJSONStream, singleChunkStream } from '../stream'
+import { parseNDJSONStream } from '../stream'
 
 interface OllamaChatResponse {
   model: string
@@ -53,7 +53,12 @@ export class OllamaProvider implements AIProvider {
         )
       }
       throw new AIServiceError(
-        makeAIError('connection_failed', `Cannot connect to Ollama at ${this.baseUrl}. Is Ollama running?`, 'ollama', true),
+        makeAIError(
+          'connection_failed',
+          `Cannot connect to Ollama at ${this.baseUrl}. Is Ollama running?`,
+          'ollama',
+          true,
+        ),
         `Cannot connect to Ollama at ${this.baseUrl}`,
       )
     }
@@ -61,23 +66,26 @@ export class OllamaProvider implements AIProvider {
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       throw new AIServiceError(
-        makeAIError('unknown', `Ollama returned ${response.status}: ${text}`, 'ollama', response.status >= 500),
+        makeAIError(
+          'unknown',
+          `Ollama returned ${response.status}: ${text}`,
+          'ollama',
+          response.status >= 500,
+        ),
         `Ollama error: ${response.status}`,
       )
     }
 
     return parseNDJSONStream(response, (json) => {
-      const data = json as OllamaChatResponse
+      // Cast via unknown to satisfy strict type checker — json is Record<string,unknown>
+      const data = json as unknown as OllamaChatResponse
       const content = data.message?.content ?? ''
       return { text: content, done: data.done }
     })
   }
 
   async complete(prompt: string, options?: ChatOptions): Promise<string> {
-    const stream = await this.chat(
-      [{ role: 'user', content: prompt }],
-      { ...options, stream: true },
-    )
+    const stream = await this.chat([{ role: 'user', content: prompt }], { ...options, stream: true })
     const reader = stream.getReader()
     let result = ''
     while (true) {
@@ -113,7 +121,7 @@ export class OllamaProvider implements AIProvider {
         const data = await response.json() as OllamaEmbedResponse
         results.push(data.embeddings[0] ?? [])
       } catch {
-        results.push([]) // Empty embedding on error
+        results.push([])
       }
     }
 
@@ -122,17 +130,12 @@ export class OllamaProvider implements AIProvider {
 
   async vision(imageBase64: string, prompt: string, mimeType = 'image/png'): Promise<string> {
     const model = this.visionModel ?? 'llava'
-    void mimeType // Ollama doesn't need mime type — it auto-detects
+    void mimeType // Ollama auto-detects mime type from base64 data
 
     const response = await fetch(`${this.baseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        prompt,
-        images: [imageBase64],
-        stream: false,
-      }),
+      body: JSON.stringify({ model, prompt, images: [imageBase64], stream: false }),
     })
 
     if (!response.ok) {
@@ -157,7 +160,6 @@ export class OllamaProvider implements AIProvider {
     }
   }
 
-  /** Fetch list of installed models */
   async listModels(): Promise<Array<{ name: string; size: number; modifiedAt: string }>> {
     const response = await fetch(`${this.baseUrl}/api/tags`)
     if (!response.ok) return []
@@ -176,6 +178,3 @@ export class OllamaProvider implements AIProvider {
     }))
   }
 }
-
-// Unused import guard
-void singleChunkStream

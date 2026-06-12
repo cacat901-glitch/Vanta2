@@ -24,11 +24,16 @@ export const useSettingsStore = create<SettingsState>()(
       const db = await getDB()
       const saved = await db.settings.getAll()
       set((s) => {
-        // Deep merge so new default keys don't get dropped
-        s.settings = deepMerge(DEFAULT_SETTINGS, saved) as AppSettings
+        // Cast both sides to the generic Record type deepMerge expects,
+        // then cast the result back to AppSettings.
+        const merged = deepMerge(
+          DEFAULT_SETTINGS as unknown as Record<string, unknown>,
+          saved as unknown as Record<string, unknown>,
+        )
+        s.settings = merged as unknown as AppSettings
         s.isLoaded = true
       })
-      // Reconfigure AI service
+      // Reconfigure AI service with loaded settings
       const { settings } = get()
       if (settings.ai.isEnabled) {
         aiService.configure(settings.ai)
@@ -37,12 +42,12 @@ export const useSettingsStore = create<SettingsState>()(
 
     update: async (section, updates) => {
       set((s) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic partial merge
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic partial merge across keyof AppSettings
         s.settings[section] = { ...(s.settings[section] as any), ...updates } as any
       })
       await get().save()
 
-      // Reconfigure AI if AI settings changed
+      // Reconfigure AI service whenever the AI section changes
       if (section === 'ai') {
         aiService.configure(get().settings.ai)
       }
@@ -62,14 +67,26 @@ export const useSettingsStore = create<SettingsState>()(
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-function deepMerge(defaults: Record<string, unknown>, overrides: Record<string, unknown>): Record<string, unknown> {
+function deepMerge(
+  defaults: Record<string, unknown>,
+  overrides: Record<string, unknown>,
+): Record<string, unknown> {
   const result: Record<string, unknown> = { ...defaults }
   for (const key of Object.keys(overrides)) {
     const def = defaults[key]
     const over = overrides[key]
-    if (over !== null && typeof over === 'object' && !Array.isArray(over) &&
-        def !== null && typeof def === 'object' && !Array.isArray(def)) {
-      result[key] = deepMerge(def as Record<string, unknown>, over as Record<string, unknown>)
+    if (
+      over !== null &&
+      typeof over === 'object' &&
+      !Array.isArray(over) &&
+      def !== null &&
+      typeof def === 'object' &&
+      !Array.isArray(def)
+    ) {
+      result[key] = deepMerge(
+        def as Record<string, unknown>,
+        over as Record<string, unknown>,
+      )
     } else if (over !== undefined) {
       result[key] = over
     }

@@ -12,13 +12,15 @@ export class TauriShellAdapter implements ShellAdapter {
   }
 
   async revealFile(path: string): Promise<void> {
-    // Open the parent directory
     const parentPath = path.replace(/[/\\][^/\\]*$/, '')
     const { open } = await import('@tauri-apps/plugin-shell')
     await open(parentPath)
   }
 
-  async runCommand(command: string, args: string[] = []): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  async runCommand(
+    command: string,
+    args: string[] = [],
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const { Command } = await import('@tauri-apps/plugin-shell')
     const child = await Command.create(command, args).execute()
     return {
@@ -34,7 +36,6 @@ export class TauriShellAdapter implements ShellAdapter {
       return result.exitCode === 0
     } catch {
       try {
-        // Windows fallback
         const result = await this.runCommand('where', [command])
         return result.exitCode === 0
       } catch {
@@ -55,7 +56,6 @@ export class TauriShellAdapter implements ShellAdapter {
   }
 
   openSettings(): void {
-    // Emit a custom event the app shell can listen to
     window.dispatchEvent(new CustomEvent('studyos:navigate', { detail: '/settings' }))
   }
 }

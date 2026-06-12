@@ -2,7 +2,9 @@
 
 export type MediaType = 'youtube' | 'image' | 'audio' | 'video' | 'web-clip'
 
-export interface TranscriptLine {
+/** Transcript line for media items (YouTube, audio recordings).
+ *  Named MediaTranscriptLine to avoid collision with knowledge.TranscriptLine */
+export interface MediaTranscriptLine {
   text: string
   startSeconds: number
   endSeconds?: number
@@ -17,7 +19,7 @@ export interface MediaItem {
   duration: number | null // seconds
   channelName: string | null
   courseId: string | null
-  transcript: TranscriptLine[] | null
+  transcript: MediaTranscriptLine[] | null
   filePath: string | null // for local files
   tags: string[]
   addedAt: Date
@@ -37,7 +39,16 @@ export interface MediaTimestamp {
 
 export type DocumentType = 'pdf' | 'docx' | 'pptx' | 'epub' | 'html' | 'markdown' | 'text' | 'csv' | 'rtf'
 
-export type AnnotationType = 'highlight' | 'underline' | 'strikethrough' | 'sticky-note' | 'ink' | 'shape' | 'bookmark' | 'stamp'
+export type AnnotationType =
+  | 'highlight'
+  | 'underline'
+  | 'strikethrough'
+  | 'sticky-note'
+  | 'ink'
+  | 'shape'
+  | 'bookmark'
+  | 'stamp'
+
 export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange'
 
 export interface AnnotationPosition {
@@ -46,10 +57,8 @@ export interface AnnotationPosition {
   y: number
   width?: number
   height?: number
-  // For text-based annotations: character offsets
   textStart?: number
   textEnd?: number
-  // For ink: polyline points
   points?: Array<{ x: number; y: number }>
 }
 
@@ -65,7 +74,7 @@ export interface Annotation {
   updatedAt: Date
 }
 
-export interface Document {
+export interface StudyDocument {
   id: string
   title: string
   filePath: string

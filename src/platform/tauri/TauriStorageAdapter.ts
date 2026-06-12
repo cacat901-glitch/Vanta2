@@ -1,10 +1,15 @@
 import type { StorageAdapter, Transaction } from '../adapters/StorageAdapter'
 
-let _db: unknown = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque Tauri DB handle
+let _db: any = null
 
-async function getDb(): Promise<unknown> {
-  if (_db) return _db
-  const Database = (await import('@tauri-apps/plugin-sql')).default
+async function getDb(): Promise<{
+  execute: (sql: string, params: unknown[]) => Promise<unknown>
+  select: <T>(sql: string, params: unknown[]) => Promise<T[]>
+}> {
+  if (_db) return _db as ReturnType<typeof getDb> extends Promise<infer T> ? T : never
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tauri plugin-sql uses a default export
+  const Database = ((await import('@tauri-apps/plugin-sql')) as any).default
   _db = await Database.load('sqlite:studyos.db')
   return _db
 }
@@ -15,12 +20,12 @@ async function getDb(): Promise<unknown> {
  */
 export class TauriStorageAdapter implements StorageAdapter {
   async execute(sql: string, params: unknown[] = []): Promise<void> {
-    const db = await getDb() as { execute: (sql: string, params: unknown[]) => Promise<unknown> }
+    const db = await getDb()
     await db.execute(sql, params)
   }
 
   async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-    const db = await getDb() as { select: <T>(sql: string, params: unknown[]) => Promise<T[]> }
+    const db = await getDb()
     return db.select<T>(sql, params)
   }
 
@@ -30,8 +35,6 @@ export class TauriStorageAdapter implements StorageAdapter {
   }
 
   async transaction(fn: (tx: Transaction) => Promise<void>): Promise<void> {
-    // SQLite in Tauri doesn't expose explicit transaction API
-    // Execute as a series of statements — real transactions via BEGIN/COMMIT
     await this.execute('BEGIN')
     try {
       const tx: Transaction = {
@@ -49,13 +52,11 @@ export class TauriStorageAdapter implements StorageAdapter {
 
   async initialize(): Promise<void> {
     await getDb()
-    // Schema initialization handled by migration runner
     const { runMigrations } = await import('../../db/migrations/runner')
     await runMigrations(this)
   }
 
   async close(): Promise<void> {
-    // Connection management handled by Tauri plugin
     _db = null
   }
 }
