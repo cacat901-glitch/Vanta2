@@ -244,9 +244,17 @@ export const useNotebookStore = create<NotebookState>()(
         if (page) { title = page.title; tags = page.tags; break }
       }
       await db.pages.indexPageInFTS(id, title, text, tags)
-      // Optionally snapshot a version (last 100 kept by repo)
+      // Register as a knowledge object for the graph + Second Brain
+      if (text.trim().length > 20) {
+        await db.knowledge.upsert({ id: `page:${id}`, type: 'page', title, content: text, tags })
+      }
+      // Snapshot a version + RAG-index on the less-frequent version save
       if (saveVersion) {
         await db.pages.saveVersion(id, content)
+        if (text.trim().length > 50) {
+          const { indexObject } = await import('@/services/rag')
+          void indexObject(`page:${id}`, text)
+        }
       }
       // Update in-memory state
       set((s) => {

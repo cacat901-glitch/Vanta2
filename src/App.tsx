@@ -25,6 +25,9 @@ import { MediaPage } from '@/features/media/MediaPage'
 import { LecturesPage } from '@/features/lecture/LecturesPage'
 import { TutorPage } from '@/features/ai-tutor/TutorPage'
 import { OralExamPage } from '@/features/oral-exam/OralExamPage'
+import { GraphPage } from '@/features/knowledge-graph/GraphPage'
+import { SecondBrainPage } from '@/features/second-brain/SecondBrainPage'
+import { ResearchPage } from '@/features/research/ResearchPage'
 
 export default function App() {
   const { isInitialized, isInitializing, initError, setInitialized } = useAppStore()
@@ -86,6 +89,9 @@ export default function App() {
         <Route path="/lectures" element={<LecturesPage />} />
         <Route path="/tutor" element={<TutorPage />} />
         <Route path="/oral-exam" element={<OralExamPage />} />
+        <Route path="/graph" element={<GraphPage />} />
+        <Route path="/second-brain" element={<SecondBrainPage />} />
+        <Route path="/research" element={<ResearchPage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:courseId" element={<CoursesPage />} />
         <Route path="/progress" element={<ProgressPage />} />
