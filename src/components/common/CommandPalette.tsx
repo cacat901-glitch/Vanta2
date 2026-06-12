@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, LayoutDashboard, BookOpen, Brain, Calendar,
   Settings, BarChart3, Pen, ArrowRight, Clock,
-  Plus, Zap, Bot,
+  Plus, Zap, Bot, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotebookStore } from '@/store/notebookStore'
@@ -19,7 +19,7 @@ interface CommandItem {
   type: 'navigation' | 'action' | 'page' | 'course' | 'ai'
   label: string
   description?: string
-  icon: React.FC<{ size?: number; className?: string }>
+  icon: LucideIcon
   shortcut?: string
   action: () => void
   color?: string
@@ -37,7 +37,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   const searchPages = useNotebookStore((s) => s.searchPages)
   const courses = useCourseStore((s) => s.courses)
   const sendMessage = useAIStore((s) => s.sendMessage)
-  const setAIPanelOpen = useAIStore
   const isAIConfigured = useAIStore((s) => s.isConfigured)
 
   useEffect(() => {
@@ -60,7 +59,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   const commands: CommandItem[] = []
 
   if (!query) {
-    // Default commands when no query
     commands.push(
       { id: 'go-dashboard', type: 'navigation', label: 'Go to Dashboard', icon: LayoutDashboard, shortcut: '', action: () => nav('/dashboard') },
       { id: 'go-notebooks', type: 'navigation', label: 'Go to Notebooks', icon: BookOpen, action: () => nav('/notebooks') },
@@ -83,8 +81,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
       )
     }
   } else {
-    // Search mode
-    // Pages from FTS
     for (const result of searchResults.slice(0, 5)) {
       commands.push({
         id: `page-${result.pageId}`,
@@ -96,7 +92,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
       })
     }
 
-    // Courses matching query
     for (const course of courses.filter((c) => c.name.toLowerCase().includes(query.toLowerCase())).slice(0, 3)) {
       commands.push({
         id: `course-${course.id}`,
@@ -109,7 +104,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
       })
     }
 
-    // Notebooks
     for (const nb of notebooks.filter((n) => n.name.toLowerCase().includes(query.toLowerCase())).slice(0, 3)) {
       commands.push({
         id: `nb-${nb.id}`,
@@ -121,7 +115,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
       })
     }
 
-    // AI command if starts with >
     if (query.startsWith('>') && isAIConfigured) {
       const aiQuery = query.slice(1).trim()
       if (aiQuery) {
@@ -165,7 +158,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
     }
   }
 
-  // Scroll selected item into view
   useEffect(() => {
     const el = listRef.current?.children[selectedIndex] as HTMLElement | undefined
     el?.scrollIntoView({ block: 'nearest' })
@@ -181,16 +173,9 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-        onClick={onClose}
-      />
-
-      {/* Palette */}
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
       <div className="fixed top-[20%] left-1/2 -translate-x-1/2 z-50 w-full max-w-xl">
         <div className="bg-surface-elevated border border-border-default rounded-xl shadow-2xl overflow-hidden">
-          {/* Search input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle">
             <Search size={16} className="text-text-muted flex-shrink-0" />
             <input
@@ -203,17 +188,13 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
               className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
             />
             {query && (
-              <button
-                onClick={() => setQuery('')}
-                className="text-text-muted hover:text-text-secondary text-xs"
-              >
+              <button onClick={() => setQuery('')} className="text-text-muted hover:text-text-secondary text-xs">
                 Clear
               </button>
             )}
             <kbd className="text-xs text-text-muted bg-surface px-1.5 py-0.5 rounded border border-border-subtle">Esc</kbd>
           </div>
 
-          {/* Results list */}
           <div ref={listRef} className="max-h-80 overflow-y-auto py-1.5">
             {commands.map((cmd, idx) => (
               <button
@@ -228,9 +209,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
               >
                 <div className={cn(
                   'w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0',
-                  cmd.type === 'ai' ? 'bg-accent-primary/20 text-accent-primary' :
-                  cmd.type === 'page' ? 'bg-surface text-text-muted' :
-                  'bg-surface text-text-muted',
+                  cmd.type === 'ai' ? 'bg-accent-primary/20 text-accent-primary' : 'bg-surface text-text-muted',
                 )}>
                   {cmd.color ? (
                     <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cmd.color }} />
@@ -255,11 +234,10 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
             ))}
           </div>
 
-          {/* Footer hints */}
           <div className="flex items-center gap-4 px-4 py-2 border-t border-border-subtle text-xs text-text-muted">
             <span className="flex items-center gap-1"><kbd className="bg-surface border border-border-subtle px-1 rounded">↑↓</kbd> Navigate</span>
             <span className="flex items-center gap-1"><kbd className="bg-surface border border-border-subtle px-1 rounded">↵</kbd> Open</span>
-            <span className="flex items-center gap-1"><Zap size={10} /><span>Type &gt; for AI commands</span></span>
+            <span className="flex items-center gap-1"><Zap size={10} /><span>Type &gt; for AI</span></span>
             <span className="flex items-center gap-1"><Clock size={10} /> Recent</span>
           </div>
         </div>

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   Flame, Brain, CheckSquare, Clock, TrendingUp,
-  BookOpen, Target, Award, Zap, ArrowRight,
+  BookOpen, Target, Award, Zap, ArrowRight, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useFlashcardStore } from '@/store/flashcardStore'
@@ -21,8 +21,7 @@ export function DashboardPage() {
   const todayTasks = tasks.filter((t) => {
     if (t.status === 'done') return false
     if (!t.dueAt) return false
-    const today = new Date()
-    return t.dueAt.toDateString() === today.toDateString()
+    return t.dueAt.toDateString() === new Date().toDateString()
   })
 
   const overdueTasks = tasks.filter((t) => {
@@ -33,7 +32,6 @@ export function DashboardPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Good morning 👋</h1>
         <p className="text-sm text-text-muted mt-1">
@@ -41,68 +39,27 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* Quick stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          icon={Brain}
-          label="Due for review"
-          value={dueCount}
-          color="text-accent-primary"
-          bgColor="bg-accent-primary/10"
-          onClick={() => navigate('/flashcards')}
-          cta="Review now →"
-        />
-        <StatCard
-          icon={CheckSquare}
-          label="Tasks today"
-          value={todayTasks.length}
-          color="text-accent-secondary"
-          bgColor="bg-accent-secondary/10"
-          onClick={() => navigate('/planner')}
-          badge={overdueTasks.length > 0 ? `${overdueTasks.length} overdue` : undefined}
-        />
-        <StatCard
-          icon={BookOpen}
-          label="Active courses"
-          value={courses.length}
-          color="text-info"
-          bgColor="bg-info/10"
-          onClick={() => navigate('/courses')}
-        />
-        <StatCard
-          icon={Flame}
-          label="Day streak"
-          value={0}
-          color="text-warning"
-          bgColor="bg-warning/10"
-          onClick={() => navigate('/progress')}
-        />
+        <StatCard icon={Brain} label="Due for review" value={dueCount} color="text-accent-primary" bgColor="bg-accent-primary/10" onClick={() => navigate('/flashcards')} cta="Review now →" />
+        <StatCard icon={CheckSquare} label="Tasks today" value={todayTasks.length} color="text-accent-secondary" bgColor="bg-accent-secondary/10" onClick={() => navigate('/planner')} badge={overdueTasks.length > 0 ? `${overdueTasks.length} overdue` : undefined} />
+        <StatCard icon={BookOpen} label="Active courses" value={courses.length} color="text-info" bgColor="bg-info/10" onClick={() => navigate('/courses')} />
+        <StatCard icon={Flame} label="Day streak" value={0} color="text-warning" bgColor="bg-warning/10" onClick={() => navigate('/progress')} />
       </div>
 
-      {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Today's tasks */}
         <div className="lg:col-span-2 space-y-4">
           <SectionCard title="Today's Tasks" icon={CheckSquare} onSeeAll={() => navigate('/planner')}>
             {todayTasks.length === 0 ? (
-              <EmptyState
-                icon={CheckSquare}
-                message="No tasks due today"
-                cta="Add a task"
-                onCta={() => navigate('/planner')}
-              />
+              <EmptyState icon={CheckSquare} message="No tasks due today" cta="Add a task" onCta={() => navigate('/planner')} />
             ) : (
               <div className="space-y-2">
                 {todayTasks.slice(0, 5).map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface/50 hover:bg-surface transition-colors"
-                  >
+                  <div key={task.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface/50 hover:bg-surface transition-colors">
                     <div className={cn(
                       'w-2 h-2 rounded-full flex-shrink-0',
                       task.priority === 'P1' ? 'bg-danger' :
                       task.priority === 'P2' ? 'bg-warning' :
-                      task.priority === 'P3' ? 'bg-info' : 'bg-text-muted'
+                      task.priority === 'P3' ? 'bg-info' : 'bg-text-muted',
                     )} />
                     <span className="text-sm text-text-primary truncate flex-1">{task.title}</span>
                     {task.dueAt && (
@@ -116,7 +73,6 @@ export function DashboardPage() {
             )}
           </SectionCard>
 
-          {/* Flashcard review prompt */}
           {dueCount > 0 && (
             <div
               className="flex items-center gap-4 p-4 rounded-xl bg-accent-primary/10 border border-accent-primary/20 cursor-pointer hover:bg-accent-primary/15 transition-colors"
@@ -136,17 +92,10 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Right column */}
         <div className="space-y-4">
-          {/* Courses */}
           <SectionCard title="Your Courses" icon={BookOpen} onSeeAll={() => navigate('/courses')}>
             {courses.length === 0 ? (
-              <EmptyState
-                icon={BookOpen}
-                message="No courses yet"
-                cta="Add a course"
-                onCta={() => navigate('/courses')}
-              />
+              <EmptyState icon={BookOpen} message="No courses yet" cta="Add a course" onCta={() => navigate('/courses')} />
             ) : (
               <div className="space-y-2">
                 {courses.slice(0, 4).map((course) => (
@@ -164,7 +113,6 @@ export function DashboardPage() {
             )}
           </SectionCard>
 
-          {/* Quick actions */}
           <SectionCard title="Quick Actions" icon={Zap}>
             <div className="grid grid-cols-2 gap-2">
               {[
@@ -187,32 +135,27 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent activity (placeholder) */}
       <SectionCard title="Recent Activity" icon={Award}>
         <div className="space-y-2 py-1">
-          {[
-            { label: 'No activity logged yet', sub: 'Start studying to see your activity here' },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-3 py-2 text-sm text-text-muted">
-              <div className="w-2 h-2 rounded-full bg-border-default" />
-              <div>
-                <p className="text-text-secondary">{item.label}</p>
-                <p className="text-xs">{item.sub}</p>
-              </div>
+          <div className="flex items-center gap-3 py-2 text-sm text-text-muted">
+            <div className="w-2 h-2 rounded-full bg-border-default" />
+            <div>
+              <p className="text-text-secondary">No activity logged yet</p>
+              <p className="text-xs">Start studying to see your activity here</p>
             </div>
-          ))}
+          </div>
         </div>
       </SectionCard>
     </div>
   )
 }
 
-// ─── Sub-components ─────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatCard({
   icon: Icon, label, value, color, bgColor, onClick, cta, badge,
 }: {
-  icon: React.FC<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: number
   color: string
@@ -243,7 +186,7 @@ function SectionCard({
   title, icon: Icon, children, onSeeAll,
 }: {
   title: string
-  icon: React.FC<{ size?: number; className?: string }>
+  icon: LucideIcon
   children: React.ReactNode
   onSeeAll?: () => void
 }) {
@@ -255,9 +198,7 @@ function SectionCard({
           <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
         </div>
         {onSeeAll && (
-          <button onClick={onSeeAll} className="text-xs text-accent-primary hover:underline">
-            See all
-          </button>
+          <button onClick={onSeeAll} className="text-xs text-accent-primary hover:underline">See all</button>
         )}
       </div>
       <div className="p-3">{children}</div>
@@ -268,7 +209,7 @@ function SectionCard({
 function EmptyState({
   icon: Icon, message, cta, onCta,
 }: {
-  icon: React.FC<{ size?: number; className?: string }>
+  icon: LucideIcon
   message: string
   cta?: string
   onCta?: () => void
@@ -278,12 +219,7 @@ function EmptyState({
       <Icon size={24} className="text-text-muted" />
       <p className="text-sm text-text-muted">{message}</p>
       {cta && (
-        <button
-          onClick={onCta}
-          className="text-xs text-accent-primary hover:underline mt-1"
-        >
-          {cta} →
-        </button>
+        <button onClick={onCta} className="text-xs text-accent-primary hover:underline mt-1">{cta} →</button>
       )}
     </div>
   )

@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react'
 import {
   Bot, X, Send, StopCircle, Trash2, Sparkles,
   FileText, RotateCcw, Languages, Lightbulb, BookOpen,
-  ChevronDown,
+  ChevronDown, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAIStore } from '@/store/aiStore'
@@ -15,7 +15,7 @@ interface AIPanelProps {
 }
 
 type QuickAction = {
-  icon: React.FC<{ size?: number }>
+  icon: LucideIcon
   label: string
   description: string
   action: () => void
@@ -35,7 +35,6 @@ export function AIPanel({ className }: AIPanelProps) {
   const clearConversation = useAIStore((s) => s.clearConversation)
   const toggleAIPanel = useAppStore((s) => s.toggleAIPanel)
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, status])
@@ -59,71 +58,42 @@ export function AIPanel({ className }: AIPanelProps) {
       icon: FileText,
       label: 'Summarize',
       description: 'Summarize selected text or current page',
-      action: () => {
-        setInput('Summarize this content as bullet points:')
-        inputRef.current?.focus()
-        setQuickActionsOpen(false)
-      },
+      action: () => { setInput('Summarize this content as bullet points:'); inputRef.current?.focus(); setQuickActionsOpen(false) },
     },
     {
       icon: Lightbulb,
       label: 'Explain',
       description: 'Explain a concept simply',
-      action: () => {
-        setInput('Explain this to me:')
-        inputRef.current?.focus()
-        setQuickActionsOpen(false)
-      },
+      action: () => { setInput('Explain this to me:'); inputRef.current?.focus(); setQuickActionsOpen(false) },
     },
     {
       icon: BookOpen,
       label: 'Flashcards',
       description: 'Generate flashcards from content',
-      action: () => {
-        setInput('Generate 10 flashcards from this content:')
-        inputRef.current?.focus()
-        setQuickActionsOpen(false)
-      },
+      action: () => { setInput('Generate 10 flashcards from this content:'); inputRef.current?.focus(); setQuickActionsOpen(false) },
     },
     {
       icon: RotateCcw,
       label: 'Rewrite',
       description: 'Rewrite and improve text',
-      action: () => {
-        setInput('Rewrite this more clearly and concisely:')
-        inputRef.current?.focus()
-        setQuickActionsOpen(false)
-      },
+      action: () => { setInput('Rewrite this more clearly and concisely:'); inputRef.current?.focus(); setQuickActionsOpen(false) },
     },
     {
       icon: Languages,
       label: 'Translate',
       description: 'Translate to any language',
-      action: () => {
-        setInput('Translate this to Spanish:')
-        inputRef.current?.focus()
-        setQuickActionsOpen(false)
-      },
+      action: () => { setInput('Translate this to Spanish:'); inputRef.current?.focus(); setQuickActionsOpen(false) },
     },
     {
       icon: Sparkles,
       label: 'Ask My Notes',
       description: 'Answer questions using your notes',
-      action: () => {
-        setInput("Based on my notes, explain:")
-        inputRef.current?.focus()
-        setQuickActionsOpen(false)
-      },
+      action: () => { setInput('Based on my notes, explain:'); inputRef.current?.focus(); setQuickActionsOpen(false) },
     },
   ]
 
   return (
-    <div
-      className={cn(
-        'flex flex-col w-80 bg-sidebar-bg border-l border-border-subtle',
-        className,
-      )}
-    >
+    <div className={cn('flex flex-col w-80 bg-sidebar-bg border-l border-border-subtle', className)}>
       {/* Header */}
       <div className="flex items-center gap-2 px-3 h-12 border-b border-border-subtle flex-shrink-0">
         <div className="w-6 h-6 rounded-md bg-accent-primary/20 flex items-center justify-center">
@@ -150,10 +120,8 @@ export function AIPanel({ className }: AIPanelProps) {
         </div>
       </div>
 
-      {/* No provider configured */}
       {!isConfigured && <AISetupPrompt />}
 
-      {/* Messages */}
       {isConfigured && (
         <div className="flex-1 overflow-y-auto py-3 px-3 space-y-3 no-scrollbar">
           {messages.length === 0 && (
@@ -168,7 +136,6 @@ export function AIPanel({ className }: AIPanelProps) {
 
       {isConfigured && (
         <div className="flex-shrink-0 border-t border-border-subtle p-2 space-y-2">
-          {/* Quick actions */}
           <div>
             <button
               onClick={() => setQuickActionsOpen(!quickActionsOpen)}
@@ -195,7 +162,6 @@ export function AIPanel({ className }: AIPanelProps) {
             )}
           </div>
 
-          {/* Input */}
           <div className="flex items-end gap-1.5">
             <div className={cn(
               'flex-1 relative rounded-lg border bg-surface transition-all duration-200',

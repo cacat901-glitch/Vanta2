@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { BookOpen, Plus, Search, Star, ChevronRight, ChevronDown, File, Folder } from 'lucide-react'
+import { BookOpen, Plus, Star, ChevronRight, ChevronDown, File, Folder } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotebookStore } from '@/store/notebookStore'
 import type { Notebook, Section, Page } from '@/types'
@@ -19,7 +19,6 @@ export function NotebooksPage() {
   const [loadedSections, setLoadedSections] = useState<Set<string>>(new Set())
   const [loadedPages, setLoadedPages] = useState<Set<string>>(new Set())
 
-  // Open page from URL
   useEffect(() => {
     if (pageId) setCurrentPage(pageId)
   }, [pageId, setCurrentPage])
@@ -63,7 +62,6 @@ export function NotebooksPage() {
 
   return (
     <div className="flex h-full">
-      {/* Left nav */}
       <div className="w-64 flex-shrink-0 border-r border-border-subtle bg-sidebar-bg overflow-y-auto">
         <div className="p-3 space-y-1">
           <div className="flex items-center justify-between mb-2">
@@ -77,7 +75,6 @@ export function NotebooksPage() {
             </button>
           </div>
 
-          {/* Favorites */}
           {favoritePages.length > 0 && (
             <div className="mb-2">
               <p className="flex items-center gap-1 text-xs text-text-muted px-1 mb-1">
@@ -90,13 +87,11 @@ export function NotebooksPage() {
                   icon={page.icon ?? '📄'}
                   active={currentPageId === page.id}
                   onClick={() => navigate(`/notebooks/${page.id}`)}
-                  isFavorite
                 />
               ))}
             </div>
           )}
 
-          {/* Notebooks tree */}
           {notebooks.map((nb) => (
             <NotebookTreeItem
               key={nb.id}
@@ -117,7 +112,7 @@ export function NotebooksPage() {
           {notebooks.length === 0 && (
             <button
               onClick={() => createNotebook('My First Notebook')}
-              className="flex items-center gap-2 w-full px-2 py-2 text-sm text-text-muted hover:text-text-primary border border-dashed border-border-default rounded-lg hover:border-border-default/80 transition-colors"
+              className="flex items-center gap-2 w-full px-2 py-2 text-sm text-text-muted hover:text-text-primary border border-dashed border-border-default rounded-lg transition-colors"
             >
               <Plus size={14} />
               Create your first notebook
@@ -126,13 +121,9 @@ export function NotebooksPage() {
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 overflow-y-auto">
         {currentPage ? (
-          <PageView
-            page={currentPage}
-            onToggleFavorite={() => toggleFavorite(currentPage.id)}
-          />
+          <PageView page={currentPage} onToggleFavorite={() => toggleFavorite(currentPage.id)} />
         ) : (
           <NotebooksEmpty onCreate={() => createNotebook('My Notebook')} />
         )}
@@ -230,8 +221,8 @@ function NotebookTreeItem({
   )
 }
 
-function NotebookLeaf({ label, icon, active, onClick, isFavorite: _isFavorite }: {
-  label: string; icon: string; active: boolean; onClick: () => void; isFavorite?: boolean
+function NotebookLeaf({ label, icon, active, onClick }: {
+  label: string; icon: string; active: boolean; onClick: () => void
 }) {
   return (
     <button
@@ -261,14 +252,12 @@ function PageView({ page, onToggleFavorite }: { page: Page; onToggleFavorite: ()
         </button>
       </div>
       <h1 className="text-3xl font-bold text-text-primary mb-6">{page.title || 'Untitled'}</h1>
-      <div className="text-text-secondary text-sm">
-        <p className="text-text-muted">
-          Editor coming in Step 2 (Notebooks module). Page ID: {page.id}
-        </p>
-        <p className="mt-4 text-text-muted">
-          Created: {page.createdAt.toLocaleDateString()} · {page.wordCount} words
-        </p>
-      </div>
+      <p className="text-text-muted text-sm">
+        Editor coming in Step 2 (Notebooks module). Page ID: {page.id}
+      </p>
+      <p className="mt-4 text-text-muted text-sm">
+        Created: {page.createdAt.toLocaleDateString()} · {page.wordCount} words
+      </p>
     </div>
   )
 }
@@ -283,14 +272,12 @@ function NotebooksEmpty({ onCreate }: { onCreate: () => void }) {
         <h2 className="text-lg font-semibold text-text-primary">No page selected</h2>
         <p className="text-sm text-text-muted mt-1">Select a page from the sidebar or create a new notebook</p>
       </div>
-      <div className="flex gap-2">
-        <button
-          onClick={onCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm hover:bg-accent-hover transition-colors"
-        >
-          <Plus size={14} /> New Notebook
-        </button>
-      </div>
+      <button
+        onClick={onCreate}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm hover:bg-accent-hover transition-colors"
+      >
+        <Plus size={14} /> New Notebook
+      </button>
     </div>
   )
 }

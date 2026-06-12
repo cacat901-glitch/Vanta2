@@ -2,15 +2,14 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, BookOpen, Pen, Brain, Calendar, Settings,
-  ChevronRight, ChevronDown, Star, BookMarked, Layers,
+  ChevronRight, ChevronDown, Star,
   FlameIcon, Trophy, BarChart3, BookCopy, GraduationCap,
-  Plus, Flame,
+  Plus, Flame, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotebookStore } from '@/store/notebookStore'
 import { useCourseStore } from '@/store/courseStore'
 import { useFlashcardStore } from '@/store/flashcardStore'
-import { useAppStore } from '@/store/appStore'
 import { truncate } from '@/lib/utils'
 import type { Course } from '@/types'
 
@@ -45,7 +44,6 @@ export function Sidebar({ open, className }: SidebarProps) {
   const isActive = (path: string) => location.pathname.startsWith(path)
 
   if (!open) {
-    // Icon rail (collapsed)
     return (
       <div className={cn('flex flex-col items-center py-3 gap-1 bg-sidebar-bg border-r border-border-subtle', 'w-12', className)}>
         {NAV_ITEMS.map((item) => (
@@ -76,14 +74,8 @@ export function Sidebar({ open, className }: SidebarProps) {
   }
 
   return (
-    <aside
-      className={cn(
-        'flex flex-col bg-sidebar-bg border-r border-border-subtle overflow-hidden',
-        'w-60',
-        className,
-      )}
-    >
-      {/* Logo / App Name */}
+    <aside className={cn('flex flex-col bg-sidebar-bg border-r border-border-subtle overflow-hidden', 'w-60', className)}>
+      {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-12 border-b border-border-subtle flex-shrink-0">
         <div className="w-7 h-7 rounded-lg bg-accent-primary flex items-center justify-center flex-shrink-0">
           <GraduationCap size={16} className="text-white" />
@@ -96,9 +88,7 @@ export function Sidebar({ open, className }: SidebarProps) {
         )}
       </div>
 
-      {/* Scrollable nav */}
       <nav className="flex-1 overflow-y-auto py-2 no-scrollbar">
-        {/* Main navigation */}
         {NAV_ITEMS.map((item) => (
           <SidebarNavItem
             key={item.path}
@@ -112,7 +102,6 @@ export function Sidebar({ open, className }: SidebarProps) {
 
         <div className="mx-3 my-2 border-t border-border-subtle" />
 
-        {/* Favorites */}
         {favoritePages.length > 0 && (
           <SidebarSection
             icon={Star}
@@ -132,7 +121,6 @@ export function Sidebar({ open, className }: SidebarProps) {
           </SidebarSection>
         )}
 
-        {/* Courses */}
         <SidebarSection
           icon={BookCopy}
           label="Courses"
@@ -160,15 +148,12 @@ export function Sidebar({ open, className }: SidebarProps) {
           )}
         </SidebarSection>
 
-        {/* Notebooks */}
         <SidebarSection
           icon={BookOpen}
           label="Notebooks"
           expanded={notebooksExpanded}
           onToggle={() => setNotebooksExpanded(!notebooksExpanded)}
-          onAdd={async () => {
-            await createNotebook('New Notebook')
-          }}
+          onAdd={async () => { await createNotebook('New Notebook') }}
         >
           {notebooks.map((nb) => (
             <NotebookItem
@@ -185,10 +170,8 @@ export function Sidebar({ open, className }: SidebarProps) {
             <p className="px-6 py-1.5 text-xs text-text-muted">No notebooks yet</p>
           )}
         </SidebarSection>
-
       </nav>
 
-      {/* Footer */}
       <div className="flex-shrink-0 border-t border-border-subtle">
         <SidebarNavItem
           icon={Settings}
@@ -196,23 +179,18 @@ export function Sidebar({ open, className }: SidebarProps) {
           active={isActive('/settings')}
           onClick={() => navigate('/settings')}
         />
-        {/* Streak indicator */}
         <StreakBadge />
       </div>
     </aside>
   )
 }
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SidebarNavItem({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-  badge,
+  icon: Icon, label, active, onClick, badge,
 }: {
-  icon: React.FC<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   active: boolean
   onClick: () => void
@@ -222,7 +200,7 @@ function SidebarNavItem({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2.5 w-full px-3 py-1.5 mx-0 text-sm rounded-none transition-colors duration-100 group',
+        'flex items-center gap-2.5 w-full px-3 py-1.5 text-sm rounded-none transition-colors duration-100 group',
         active
           ? 'bg-accent-primary/12 text-accent-primary font-medium border-r-2 border-accent-primary'
           : 'text-text-secondary hover:text-text-primary hover:bg-surface/60',
@@ -240,14 +218,9 @@ function SidebarNavItem({
 }
 
 function SidebarSection({
-  icon: Icon,
-  label,
-  expanded,
-  onToggle,
-  onAdd,
-  children,
+  icon: Icon, label, expanded, onToggle, onAdd, children,
 }: {
-  icon: React.FC<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   expanded: boolean
   onToggle: () => void
@@ -280,25 +253,15 @@ function SidebarSection({
   )
 }
 
-function SidebarLeaf({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: string
-  label: string
-  active: boolean
-  onClick: () => void
+function SidebarLeaf({ icon, label, active, onClick }: {
+  icon: string; label: string; active: boolean; onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
         'flex items-center gap-2 w-full px-5 py-1 text-sm transition-colors duration-100',
-        active
-          ? 'text-accent-primary bg-accent-primary/10'
-          : 'text-text-secondary hover:text-text-primary hover:bg-surface/60',
+        active ? 'text-accent-primary bg-accent-primary/10' : 'text-text-secondary hover:text-text-primary hover:bg-surface/60',
       )}
     >
       <span className="text-sm">{icon}</span>
@@ -313,15 +276,10 @@ function CourseItem({ course, active, onClick }: { course: Course; active: boole
       onClick={onClick}
       className={cn(
         'flex items-center gap-2.5 w-full px-4 py-1.5 text-sm transition-colors duration-100',
-        active
-          ? 'text-text-primary bg-surface/80'
-          : 'text-text-secondary hover:text-text-primary hover:bg-surface/60',
+        active ? 'text-text-primary bg-surface/80' : 'text-text-secondary hover:text-text-primary hover:bg-surface/60',
       )}
     >
-      <span
-        className="w-2 h-2 rounded-full flex-shrink-0"
-        style={{ backgroundColor: course.color }}
-      />
+      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: course.color }} />
       <span className="text-sm mr-1">{course.icon}</span>
       <span className="truncate text-xs">{course.name}</span>
     </button>
@@ -329,44 +287,28 @@ function CourseItem({ course, active, onClick }: { course: Course; active: boole
 }
 
 function NotebookItem({
-  label,
-  icon,
-  color,
-  active,
-  onClick,
+  label, icon, color, active, onClick,
 }: {
-  notebookId: string
-  label: string
-  icon: string | null
-  color: string | null
-  active: boolean
-  onClick: () => void
+  notebookId: string; label: string; icon: string | null; color: string | null; active: boolean; onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
         'flex items-center gap-2 w-full px-5 py-1 text-sm transition-colors duration-100',
-        active
-          ? 'text-text-primary bg-surface/80'
-          : 'text-text-secondary hover:text-text-primary hover:bg-surface/60',
+        active ? 'text-text-primary bg-surface/80' : 'text-text-secondary hover:text-text-primary hover:bg-surface/60',
       )}
     >
       <span className="text-sm">{icon ?? '📓'}</span>
-      <span
-        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-        style={{ backgroundColor: color ?? '#7C6FFF' }}
-      />
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color ?? '#7C6FFF' }} />
       <span className="truncate text-xs">{label}</span>
     </button>
   )
 }
 
 function StreakBadge() {
-  // Placeholder — will connect to activity store
   const streak = 0
   if (streak === 0) return null
-
   return (
     <div className="flex items-center gap-2 px-4 py-2 text-xs text-warning">
       <Flame size={14} className="text-orange-400 animate-streak-flame" />

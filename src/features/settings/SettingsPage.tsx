@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Bot, Palette, Bell, Database, Keyboard,
   Info, CheckCircle2, AlertCircle, Loader2,
-  Eye, EyeOff, ChevronRight,
+  Eye, EyeOff, ChevronRight, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -15,7 +15,7 @@ type SettingsSection = 'ai' | 'appearance' | 'notifications' | 'data' | 'shortcu
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('ai')
 
-  const sections: { id: SettingsSection; label: string; icon: React.FC<{size?: number}> }[] = [
+  const sections: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
     { id: 'ai', label: 'AI Provider', icon: Bot },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -26,7 +26,6 @@ export function SettingsPage() {
 
   return (
     <div className="flex h-full">
-      {/* Settings nav */}
       <div className="w-52 flex-shrink-0 border-r border-border-subtle bg-sidebar-bg p-3">
         <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider px-2 mb-2">Settings</h2>
         {sections.map((s) => (
@@ -47,7 +46,6 @@ export function SettingsPage() {
         ))}
       </div>
 
-      {/* Settings content */}
       <div className="flex-1 overflow-y-auto p-8 max-w-2xl">
         {activeSection === 'ai' && <AISettings />}
         {activeSection === 'appearance' && <AppearanceSettings />}
@@ -59,8 +57,6 @@ export function SettingsPage() {
     </div>
   )
 }
-
-// ─── AI Settings ─────────────────────────────────────────────────────────────
 
 function AISettings() {
   const settings = useSettingsStore((s) => s.settings)
@@ -100,12 +96,9 @@ function AISettings() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-text-primary">AI Provider</h1>
-        <p className="text-sm text-text-muted mt-1">
-          Configure your AI provider. Ollama is recommended — free, offline, unlimited.
-        </p>
+        <p className="text-sm text-text-muted mt-1">Configure your AI provider. Ollama is recommended — free, offline, unlimited.</p>
       </div>
 
-      {/* Provider selector */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-text-primary">Provider</label>
         <div className="grid grid-cols-1 gap-2">
@@ -115,15 +108,10 @@ function AISettings() {
               onClick={() => void update('ai', { type: p.type, model: '' })}
               className={cn(
                 'flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
-                ai.type === p.type
-                  ? 'border-accent-primary bg-accent-primary/10'
-                  : 'border-border-subtle bg-surface hover:border-border-default',
+                ai.type === p.type ? 'border-accent-primary bg-accent-primary/10' : 'border-border-subtle bg-surface hover:border-border-default',
               )}
             >
-              <div className={cn(
-                'w-2 h-2 rounded-full flex-shrink-0',
-                ai.type === p.type ? 'bg-accent-primary' : 'bg-border-default',
-              )} />
+              <div className={cn('w-2 h-2 rounded-full flex-shrink-0', ai.type === p.type ? 'bg-accent-primary' : 'bg-border-default')} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-text-primary">{p.label}</span>
@@ -137,7 +125,6 @@ function AISettings() {
         </div>
       </div>
 
-      {/* Provider-specific config */}
       <div className="space-y-4">
         {(ai.type === 'ollama' || ai.type === 'lmstudio' || ai.type === 'jan' || ai.type === 'custom') && (
           <SettingsField label="Base URL">
@@ -182,7 +169,6 @@ function AISettings() {
         </SettingsField>
       </div>
 
-      {/* Test + Save */}
       <div className="flex items-center gap-3">
         <button
           onClick={handleTest}
@@ -192,23 +178,17 @@ function AISettings() {
           {testing ? <Loader2 size={14} className="animate-spin" /> : null}
           Test Connection
         </button>
-
         <button
           onClick={handleSave}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm hover:bg-accent-hover transition-colors"
         >
           Save
         </button>
-
         {testResult === 'ok' && (
-          <span className="flex items-center gap-1 text-success text-sm">
-            <CheckCircle2 size={14} /> Connected
-          </span>
+          <span className="flex items-center gap-1 text-success text-sm"><CheckCircle2 size={14} /> Connected</span>
         )}
         {testResult === 'fail' && (
-          <span className="flex items-center gap-1 text-danger text-sm">
-            <AlertCircle size={14} /> Connection failed
-          </span>
+          <span className="flex items-center gap-1 text-danger text-sm"><AlertCircle size={14} /> Connection failed</span>
         )}
       </div>
 
@@ -222,11 +202,10 @@ function AISettings() {
           </ol>
         </div>
       )}
-
       {ai.type === 'gemini' && (
         <div className="p-4 rounded-lg bg-success/5 border border-success/20 text-sm text-text-secondary">
           <p className="font-medium text-text-primary mb-1">Get a free Gemini API key</p>
-          <p className="text-xs">Visit <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline">aistudio.google.com</a> → Get API key. Free tier: 15 requests/min, 1M token context.</p>
+          <p className="text-xs">Visit <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline">aistudio.google.com</a> → Get API key. Free: 15 req/min, 1M token context.</p>
         </div>
       )}
     </div>
@@ -236,70 +215,43 @@ function AISettings() {
 function AppearanceSettings() {
   const settings = useSettingsStore((s) => s.settings)
   const update = useSettingsStore((s) => s.update)
-
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-text-primary">Appearance</h1>
-
       <SettingsField label="Theme">
         <div className="flex gap-2">
           {(['dark', 'light', 'system'] as const).map((theme) => (
-            <button
-              key={theme}
-              onClick={() => void update('appearance', { theme })}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-sm border capitalize transition-colors',
-                settings.appearance.theme === theme
-                  ? 'border-accent-primary bg-accent-primary/15 text-accent-primary'
-                  : 'border-border-subtle bg-surface text-text-secondary hover:border-border-default',
-              )}
-            >
+            <button key={theme} onClick={() => void update('appearance', { theme })}
+              className={cn('px-3 py-1.5 rounded-lg text-sm border capitalize transition-colors',
+                settings.appearance.theme === theme ? 'border-accent-primary bg-accent-primary/15 text-accent-primary' : 'border-border-subtle bg-surface text-text-secondary hover:border-border-default')}>
               {theme}
             </button>
           ))}
         </div>
       </SettingsField>
-
       <SettingsField label="Font Size">
         <div className="flex gap-2">
           {(['small', 'default', 'large', 'xlarge'] as const).map((size) => (
-            <button
-              key={size}
-              onClick={() => void update('appearance', { fontSize: size })}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-sm border capitalize transition-colors',
-                settings.appearance.fontSize === size
-                  ? 'border-accent-primary bg-accent-primary/15 text-accent-primary'
-                  : 'border-border-subtle bg-surface text-text-secondary',
-              )}
-            >
+            <button key={size} onClick={() => void update('appearance', { fontSize: size })}
+              className={cn('px-3 py-1.5 rounded-lg text-sm border capitalize transition-colors',
+                settings.appearance.fontSize === size ? 'border-accent-primary bg-accent-primary/15 text-accent-primary' : 'border-border-subtle bg-surface text-text-secondary')}>
               {size}
             </button>
           ))}
         </div>
       </SettingsField>
-
       <SettingsField label="Accent Color">
         <div className="flex gap-2 flex-wrap">
           {['#7C6FFF', '#3ECFB2', '#FF5263', '#FFBB38', '#4DA6FF', '#FF9040'].map((color) => (
-            <button
-              key={color}
-              onClick={() => void update('appearance', { accentColor: color })}
-              className={cn(
-                'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110',
-                settings.appearance.accentColor === color ? 'border-white scale-110' : 'border-transparent',
-              )}
-              style={{ backgroundColor: color }}
-            />
+            <button key={color} onClick={() => void update('appearance', { accentColor: color })}
+              className={cn('w-8 h-8 rounded-full border-2 transition-transform hover:scale-110',
+                settings.appearance.accentColor === color ? 'border-white scale-110' : 'border-transparent')}
+              style={{ backgroundColor: color }} />
           ))}
         </div>
       </SettingsField>
-
       <SettingsField label="Compact Mode" description="Denser UI with less padding">
-        <Toggle
-          checked={settings.appearance.compactMode}
-          onChange={(v) => void update('appearance', { compactMode: v })}
-        />
+        <Toggle checked={settings.appearance.compactMode} onChange={(v) => void update('appearance', { compactMode: v })} />
       </SettingsField>
     </div>
   )
@@ -309,18 +261,12 @@ function NotificationSettings() {
   const settings = useSettingsStore((s) => s.settings)
   const update = useSettingsStore((s) => s.update)
   const notifs = settings.notifications
-
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-text-primary">Notifications</h1>
-
       <SettingsField label="Enable Notifications">
-        <Toggle
-          checked={notifs.enabled}
-          onChange={(v) => void update('notifications', { enabled: v })}
-        />
+        <Toggle checked={notifs.enabled} onChange={(v) => void update('notifications', { enabled: v })} />
       </SettingsField>
-
       {notifs.enabled && (
         <>
           <SettingsField label="Morning Briefing" description={`Sent at ${notifs.morningBriefingTime}`}>
@@ -333,11 +279,9 @@ function NotificationSettings() {
             <Toggle checked={notifs.streakAlert} onChange={(v) => void update('notifications', { streakAlert: v })} />
           </SettingsField>
           <SettingsField label="Notification Tone">
-            <select
-              value={notifs.tone}
+            <select value={notifs.tone}
               onChange={(e) => void update('notifications', { tone: e.target.value as typeof notifs.tone })}
-              className="settings-input w-auto"
-            >
+              className="settings-input w-auto">
               <option value="motivational">Motivational</option>
               <option value="neutral">Neutral</option>
               <option value="sarcastic">Sarcastic</option>
@@ -354,27 +298,22 @@ function DataSettings() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-text-primary">Data & Privacy</h1>
-      <p className="text-sm text-text-muted">All your data is stored locally on your device. Nothing is sent to external servers except AI API calls to your configured provider.</p>
-
+      <p className="text-sm text-text-muted">All your data is stored locally. Nothing is sent to external servers except AI API calls to your configured provider.</p>
       <div className="space-y-3">
         {[
           { label: 'Export All Data (JSON)', description: 'Full backup of everything', danger: false },
           { label: 'Export Notes as Markdown', description: 'ZIP of all notebook pages as .md files', danger: false },
           { label: 'Import Backup', description: 'Restore from a JSON backup', danger: false },
           { label: 'Open Data Folder', description: 'Reveal app data folder in file manager', danger: false },
-          { label: 'Clear All Data', description: 'Permanently delete everything — this cannot be undone', danger: true },
+          { label: 'Clear All Data', description: 'Permanently delete everything — cannot be undone', danger: true },
         ].map((action) => (
           <div key={action.label} className="flex items-center justify-between p-3 rounded-lg bg-surface border border-border-subtle">
             <div>
               <p className={cn('text-sm font-medium', action.danger ? 'text-danger' : 'text-text-primary')}>{action.label}</p>
               <p className="text-xs text-text-muted">{action.description}</p>
             </div>
-            <button className={cn(
-              'px-3 py-1.5 rounded-md text-sm border transition-colors',
-              action.danger
-                ? 'border-danger/30 text-danger hover:bg-danger/10'
-                : 'border-border-default text-text-secondary hover:bg-surface-elevated',
-            )}>
+            <button className={cn('px-3 py-1.5 rounded-md text-sm border transition-colors',
+              action.danger ? 'border-danger/30 text-danger hover:bg-danger/10' : 'border-border-default text-text-secondary hover:bg-surface-elevated')}>
               {action.danger ? 'Delete' : 'Export'}
             </button>
           </div>
@@ -402,7 +341,6 @@ function ShortcutsRef() {
     { key: '[[', action: 'Link to page (in editor)' },
     { key: 'Esc', action: 'Close modal / palette / panel' },
   ]
-
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-text-primary">Keyboard Shortcuts</h1>
@@ -434,20 +372,14 @@ function AboutSection() {
         A personal AI-powered learning operating system. All data stored locally. Built with React, Tauri, and love for learning.
       </p>
       <div className="flex gap-3">
-        <a href="https://github.com" target="_blank" rel="noopener noreferrer"
-          className="text-sm text-accent-primary hover:underline">GitHub →</a>
-        <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer"
-          className="text-sm text-accent-primary hover:underline">Get Ollama →</a>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-sm text-accent-primary hover:underline">GitHub →</a>
+        <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-sm text-accent-primary hover:underline">Get Ollama →</a>
       </div>
     </div>
   )
 }
 
-// ─── Helper components ─────────────────────────────────────────────────────────
-
-function SettingsField({ label, description, children }: {
-  label: string; description?: string; children: React.ReactNode
-}) {
+function SettingsField({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1">
@@ -461,19 +393,11 @@ function SettingsField({ label, description, children }: {
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        'relative inline-flex w-10 h-5 rounded-full transition-colors',
-        checked ? 'bg-accent-primary' : 'bg-surface-elevated border border-border-default',
-      )}
-    >
-      <span className={cn(
-        'absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform',
-        checked ? 'translate-x-5' : 'translate-x-0.5',
-      )} />
+    <button role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
+      className={cn('relative inline-flex w-10 h-5 rounded-full transition-colors',
+        checked ? 'bg-accent-primary' : 'bg-surface-elevated border border-border-default')}>
+      <span className={cn('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform',
+        checked ? 'translate-x-5' : 'translate-x-0.5')} />
     </button>
   )
 }

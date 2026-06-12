@@ -1,13 +1,22 @@
 import { BookCopy, Plus } from 'lucide-react'
 import { useCourseStore } from '@/store/courseStore'
 import { useNavigate, useParams } from 'react-router-dom'
-import { randomCourseColor } from '@/lib/utils'
+import type { CourseColor } from '@/types/course'
 
 export function CoursesPage() {
   const { courseId } = useParams()
   const courses = useCourseStore((s) => s.courses)
   const createCourse = useCourseStore((s) => s.create)
   const navigate = useNavigate()
+
+  const COURSE_COLORS: CourseColor[] = [
+    '#7C6FFF', '#3ECFB2', '#FFBB38', '#FF5263',
+    '#4DA6FF', '#4CAF50', '#E91E8C', '#FF9040',
+    '#00BCD4', '#8BC34A',
+  ]
+
+  const getRandomCourseColor = (): CourseColor =>
+    COURSE_COLORS[Math.floor(Math.random() * COURSE_COLORS.length)] ?? '#7C6FFF'
 
   const selectedCourse = courseId ? courses.find((c) => c.id === courseId) : null
 
@@ -21,7 +30,9 @@ export function CoursesPage() {
             {selectedCourse.professor && <p className="text-text-muted text-sm">{selectedCourse.professor}</p>}
           </div>
         </div>
-        <p className="text-text-muted text-sm">Full course overview with linked notebooks, PDFs, flashcards, assignments, and AI readiness score coming in Step 7 (Course Intelligence module).</p>
+        <p className="text-text-muted text-sm">
+          Full course overview with linked notebooks, PDFs, flashcards, assignments, and AI readiness score coming in Step 7 (Course Intelligence module).
+        </p>
       </div>
     )
   }
@@ -32,7 +43,19 @@ export function CoursesPage() {
         <h1 className="text-xl font-bold text-text-primary">Courses</h1>
         <button
           onClick={async () => {
-            const c = await createCourse({ name: 'New Course', icon: '📚', color: randomCourseColor(), semester: null, professor: null, courseCode: null, schedule: [], room: null, zoomLink: null, syllabusDocumentId: null, isActive: true })
+            const c = await createCourse({
+              name: 'New Course',
+              icon: '📚',
+              color: getRandomCourseColor(),
+              semester: null,
+              professor: null,
+              courseCode: null,
+              schedule: [],
+              room: null,
+              zoomLink: null,
+              syllabusDocumentId: null,
+              isActive: true,
+            })
             navigate(`/courses/${c.id}`)
           }}
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent-primary text-white text-sm hover:bg-accent-hover transition-colors"
@@ -52,9 +75,12 @@ export function CoursesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {courses.map((course) => (
-            <button key={course.id} onClick={() => navigate(`/courses/${course.id}`)}
+            <button
+              key={course.id}
+              onClick={() => navigate(`/courses/${course.id}`)}
               className="flex items-center gap-3 p-4 rounded-xl bg-surface border border-border-subtle hover:border-border-default transition-colors text-left"
-              style={{ borderLeftColor: course.color, borderLeftWidth: '3px' }}>
+              style={{ borderLeftColor: course.color, borderLeftWidth: '3px' }}
+            >
               <span className="text-2xl">{course.icon}</span>
               <div className="min-w-0">
                 <p className="font-medium text-text-primary truncate">{course.name}</p>
