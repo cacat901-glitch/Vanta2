@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { useAppStore } from '@/store/appStore'
+import { useAIStore } from '@/store/aiStore'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { AIPanel } from './AIPanel'
@@ -20,6 +21,27 @@ export function AppShell({ children }: AppShellProps) {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
   const toggleAIPanel = useAppStore((s) => s.toggleAIPanel)
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
+  const setAIPanelOpen = useAppStore((s) => s.setAIPanelOpen)
+  const pushAssistant = useAIStore((s) => s.pushAssistant)
+
+  // Listen for AI results dispatched from other modules (canvas, PDF, etc.)
+  useEffect(() => {
+    function onAIResult(e: Event) {
+      const detail = (e as CustomEvent<{ title: string; text: string }>).detail
+      setAIPanelOpen(true)
+      pushAssistant(detail.text, detail.title)
+    }
+    function onNavigate(e: Event) {
+      const detail = (e as CustomEvent<string>).detail
+      window.location.hash = detail
+    }
+    window.addEventListener('studyos:ai-result', onAIResult)
+    window.addEventListener('studyos:navigate', onNavigate)
+    return () => {
+      window.removeEventListener('studyos:ai-result', onAIResult)
+      window.removeEventListener('studyos:navigate', onNavigate)
+    }
+  }, [setAIPanelOpen, pushAssistant])
 
   // Global keyboard shortcuts
   useEffect(() => {

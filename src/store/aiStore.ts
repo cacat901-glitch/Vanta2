@@ -47,6 +47,9 @@ interface AIState {
 
   // Sync provider state from settings
   syncProvider: () => void
+
+  // Push a standalone assistant message (e.g. results from canvas/PDF AI)
+  pushAssistant: (text: string, userLabel?: string) => void
 }
 
 let _inlineController: AbortController | null = null
@@ -68,6 +71,16 @@ export const useAIStore = create<AIState>()(
         s.isConfigured = aiService.isConfigured
         s.providerName = aiService.activeProvider
         s.modelName = aiService.activeModel
+      })
+    },
+
+    pushAssistant: (text, userLabel) => {
+      set((s) => {
+        if (userLabel) {
+          s.messages.push({ id: `msg-${Date.now()}-u`, role: 'user', content: userLabel, isStreaming: false, timestamp: new Date() })
+        }
+        s.messages.push({ id: `msg-${Date.now()}-a`, role: 'assistant', content: text, isStreaming: false, timestamp: new Date() })
+        s.status = 'complete'
       })
     },
 

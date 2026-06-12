@@ -337,3 +337,119 @@
          placeholder:text-text-muted outline-none transition-colors
          focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/20;
 }
+
+
+/* ─── Callout Blocks ────────────────────────────────────────────────── */
+.callout {
+  @apply my-3 rounded-lg border-l-4 px-4 py-3;
+}
+.callout > * { @apply my-1; }
+.callout-info { @apply bg-info/8 border-info; }
+.callout-tip { @apply bg-success/8 border-success; }
+.callout-warning { @apply bg-warning/8 border-warning; }
+.callout-danger { @apply bg-danger/8 border-danger; }
+.callout::before {
+  content: '';
+  @apply block;
+}
+
+/* ─── Math Nodes ────────────────────────────────────────────────────── */
+.math-inline:hover { @apply bg-accent-primary/10 rounded; }
+.math-block:hover { @apply ring-1 ring-accent-primary/40; }
+
+/* ─── Prose Editor (TipTap content) ─────────────────────────────────── */
+.prose-editor {
+  @apply text-text-primary;
+  font-size: 15px;
+  line-height: 1.75;
+  caret-color: #7C6FFF;
+}
+.prose-editor > * + * { margin-top: 0.75em; }
+.prose-editor h1 { @apply text-3xl font-bold mt-8 mb-3; }
+.prose-editor h2 { @apply text-2xl font-semibold mt-6 mb-2; }
+.prose-editor h3 { @apply text-xl font-semibold mt-5 mb-2; }
+.prose-editor h4 { @apply text-lg font-medium mt-4 mb-1; }
+.prose-editor p { @apply leading-relaxed; }
+.prose-editor ul { @apply list-disc pl-6 my-2; }
+.prose-editor ol { @apply list-decimal pl-6 my-2; }
+.prose-editor li { @apply my-1; }
+.prose-editor li p { @apply my-0; }
+.prose-editor blockquote { @apply border-l-4 border-accent-primary/50 pl-4 italic text-text-secondary my-4; }
+.prose-editor code { @apply bg-surface-elevated text-accent-primary font-mono text-sm px-1.5 py-0.5 rounded; }
+.prose-editor pre { @apply bg-surface-elevated rounded-lg p-4 my-4 overflow-x-auto; }
+.prose-editor pre code { @apply bg-transparent text-text-primary p-0 text-sm; }
+.prose-editor a { @apply text-accent-primary underline underline-offset-2 hover:text-accent-hover; }
+.prose-editor hr { @apply border-t border-border-default my-6; }
+.prose-editor img { @apply rounded-lg max-w-full my-2; }
+.prose-editor mark { @apply rounded-sm px-0.5; }
+
+/* Tables */
+.prose-editor table { @apply w-full border-collapse my-4 table-fixed; }
+.prose-editor th, .prose-editor td { @apply border border-border-default px-3 py-2 text-left relative; }
+.prose-editor th { @apply bg-surface font-semibold; }
+.prose-editor .selectedCell { @apply bg-accent-primary/10; }
+
+/* Task lists */
+.prose-editor ul[data-type="taskList"] { @apply list-none pl-0; }
+.prose-editor ul[data-type="taskList"] li { @apply flex items-start gap-2; }
+.prose-editor ul[data-type="taskList"] li > label { @apply flex items-center mt-1 select-none; }
+.prose-editor ul[data-type="taskList"] li > div { @apply flex-1; }
+.prose-editor ul[data-type="taskList"] input[type="checkbox"] {
+  @apply w-4 h-4 rounded border border-border-default bg-surface cursor-pointer;
+  accent-color: #7C6FFF;
+}
+
+/* Placeholder */
+.prose-editor p.is-editor-empty:first-child::before {
+  @apply text-text-muted pointer-events-none float-left h-0;
+  content: attr(data-placeholder);
+}
+
+/* YouTube embeds */
+.prose-editor div[data-youtube-video] { @apply my-4 rounded-lg overflow-hidden; }
+.prose-editor iframe { @apply rounded-lg max-w-full; }
+
+/* Code block syntax highlighting (lowlight / highlight.js tokens) */
+.prose-editor .hljs-comment, .prose-editor .hljs-quote { @apply text-text-muted italic; }
+.prose-editor .hljs-keyword, .prose-editor .hljs-selector-tag { color: #C792EA; }
+.prose-editor .hljs-string, .prose-editor .hljs-attr { color: #C3E88D; }
+.prose-editor .hljs-number, .prose-editor .hljs-literal { color: #F78C6C; }
+.prose-editor .hljs-function, .prose-editor .hljs-title { color: #82AAFF; }
+.prose-editor .hljs-built_in, .prose-editor .hljs-type { color: #FFCB6B; }
+
+
+/* ─── Canvas Backgrounds ────────────────────────────────────────────── */
+.canvas-bg-blank-dark { background-color: #0F0F13; }
+.canvas-bg-blank-white { background-color: #FAFAFA; }
+.canvas-bg-blank-custom { background-color: #17171F; }
+.canvas-bg-dot-small {
+  background-color: #13131A;
+  background-image: radial-gradient(circle, #2A2A3D 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.canvas-bg-dot-large {
+  background-color: #13131A;
+  background-image: radial-gradient(circle, #2A2A3D 1.5px, transparent 1.5px);
+  background-size: 40px 40px;
+}
+.canvas-bg-graph-small {
+  background-color: #13131A;
+  background-image: linear-gradient(#2A2A3D 1px, transparent 1px), linear-gradient(90deg, #2A2A3D 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.canvas-bg-graph-large {
+  background-color: #13131A;
+  background-image: linear-gradient(#2A2A3D 1px, transparent 1px), linear-gradient(90deg, #2A2A3D 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+.canvas-bg-ruled-narrow, .canvas-bg-ruled-wide, .canvas-bg-ruled-college {
+  background-color: #13131A;
+  background-image: linear-gradient(#2A2A3D 1px, transparent 1px);
+  background-size: 100% 28px;
+}
+.canvas-bg-ruled-wide { background-size: 100% 36px; }
+.canvas-bg-isometric {
+  background-color: #13131A;
+  background-image: linear-gradient(30deg, #2A2A3D 1px, transparent 1px), linear-gradient(150deg, #2A2A3D 1px, transparent 1px);
+  background-size: 40px 40px;
+}

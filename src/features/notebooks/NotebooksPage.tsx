@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { BookOpen, Plus, Star, ChevronRight, ChevronDown, File, Folder } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotebookStore } from '@/store/notebookStore'
+import { PageEditor } from './PageEditor'
 import type { Notebook, Section, Page } from '@/types'
 
 export function NotebooksPage() {
@@ -123,7 +124,7 @@ export function NotebooksPage() {
 
       <div className="flex-1 overflow-y-auto">
         {currentPage ? (
-          <PageView page={currentPage} onToggleFavorite={() => toggleFavorite(currentPage.id)} />
+          <PageEditor key={currentPage.id} page={currentPage} />
         ) : (
           <NotebooksEmpty onCreate={() => createNotebook('My Notebook')} />
         )}
@@ -235,30 +236,6 @@ function NotebookLeaf({ label, icon, active, onClick }: {
       <span>{icon}</span>
       <span className="truncate">{label}</span>
     </button>
-  )
-}
-
-function PageView({ page, onToggleFavorite }: { page: Page; onToggleFavorite: () => void }) {
-  return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-3xl">{page.icon ?? '📄'}</span>
-        <button
-          onClick={onToggleFavorite}
-          className={cn('ml-2', page.isFavorite ? 'text-warning' : 'text-text-muted hover:text-warning')}
-          title={page.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          <Star size={16} fill={page.isFavorite ? 'currentColor' : 'none'} />
-        </button>
-      </div>
-      <h1 className="text-3xl font-bold text-text-primary mb-6">{page.title || 'Untitled'}</h1>
-      <p className="text-text-muted text-sm">
-        Editor coming in Step 2 (Notebooks module). Page ID: {page.id}
-      </p>
-      <p className="mt-4 text-text-muted text-sm">
-        Created: {page.createdAt.toLocaleDateString()} · {page.wordCount} words
-      </p>
-    </div>
   )
 }
 

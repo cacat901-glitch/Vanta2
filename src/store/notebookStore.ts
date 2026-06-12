@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import type { Workspace, Notebook, Section, Page } from '@/types'
+import type { Workspace, Notebook, Section, Page, PageVersion } from '@/types'
 import { getDB } from '@/db'
 
 interface NotebookState {
@@ -36,10 +36,16 @@ interface NotebookState {
   loadPages: (sectionId: string) => Promise<Page[]>
   createPage: (sectionId: string, title?: string) => Promise<Page>
   updatePage: (id: string, updates: Partial<Page>) => Promise<void>
+  savePageContent: (id: string, content: unknown, text: string, wordCount: number, saveVersion?: boolean) => Promise<void>
   deletePage: (id: string) => Promise<void>
   duplicatePage: (id: string) => Promise<Page | null>
   setCurrentPage: (id: string | null) => void
   getCurrentPage: () => Page | null
+
+  // Version history
+  versions: PageVersion[]
+  loadVersions: (pageId: string) => Promise<void>
+  restoreVersion: (pageId: string, version: PageVersion) => Promise<void>
 
   // Favorites
   favoritePages: Page[]
@@ -65,6 +71,7 @@ export const useNotebookStore = create<NotebookState>()(
     isLoading: false,
     favoritePages: [],
     searchResults: [],
+    versions: [],
 
     initialize: async () => {
       set((s) => { s.isLoading = true })
@@ -225,6 +232,31 @@ export const useNotebookStore = create<NotebookState>()(
       })
     },
 
+    savePageContent: async (id, content, text, wordCount, saveVersion = false) => {
+      const db = await getDB()
+      // Persist content + word count
+      await db.pages.updatePage(id, { content, wordCount })
+      // Update full-text search index
+      let title = 'Untitled'
+      let tags: string[] = []
+      for (const pageList of Object.values(get().pages)) {
+        const page = pageList.find((p) => p.id === id)
+        if (page) { title = page.title; tags = page.tags; break }
+      }
+      await db.pages.indexPageInFTS(id, title, text, tags)
+      // Optionally snapshot a version (last 100 kept by repo)
+      if (saveVersion) {
+        await db.pages.saveVersion(id, content)
+      }
+      // Update in-memory state
+      set((s) => {
+        for (const sectionId of Object.keys(s.pages)) {
+          const page = s.pages[sectionId]!.find((p) => p.id === id)
+          if (page) { page.content = content; page.wordCount = wordCount; page.updatedAt = new Date(); break }
+        }
+      })
+    },
+
     duplicatePage: async (id) => {
       const db = await getDB()
       const newPage = await db.pages.duplicatePage(id)
@@ -277,5 +309,21 @@ export const useNotebookStore = create<NotebookState>()(
     },
 
     clearSearch: () => set((s) => { s.searchResults = [] }),
+
+    loadVersions: async (pageId) => {
+      const db = await getDB()
+      const versions = await db.pages.getVersions(pageId)
+      set((s) => { s.versions = versions })
+    },
+
+    restoreVersion: async (pageId, version) => {
+      await get().savePageContent(pageId, version.content, '', 0, true)
+      set((s) => {
+        for (const sectionId of Object.keys(s.pages)) {
+          const page = s.pages[sectionId]!.find((p) => p.id === pageId)
+          if (page) { page.content = version.content; break }
+        }
+      })
+    },
   })),
 )
