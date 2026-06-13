@@ -1,15 +1,31 @@
 import * as pdfjsLib from 'pdfjs-dist'
-// Vite resolves this to a hashed worker URL
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
+// Canonical pdf.js v4 + Vite worker setup: new URL(..., import.meta.url) is
+// statically rewritten by Vite to the correct bundled worker asset. The older
+// `?url` import frequently fails to load the ESM worker, which made
+// getDocument() hang forever (the "PDF loads forever" bug).
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString()
 
 export type PdfDoc = pdfjsLib.PDFDocumentProxy
 
-/** Load a PDF document from raw bytes. */
-export async function loadPdf(data: Uint8Array): Promise<PdfDoc> {
-  const loadingTask = pdfjsLib.getDocument({ data })
-  return loadingTask.promise
+/** Load a PDF document from raw bytes, with a hard timeout so it can never hang. */
+export async function loadPdf(data: Uint8Array, timeoutMs = 30000): Promise<PdfDoc> {
+  const task = pdfjsLib.getDocument({ data })
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      void task.destroy()
+      reject(new Error('PDF load timed out — the file may be corrupt or too large.'))
+    }, timeoutMs)
+  })
+  try {
+    return await Promise.race([task.promise, timeout])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 /** Extract all text from a PDF (used for search + AI + RAG). */
